@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# sshd-patch		Start up the OpenSSH server daemon
+# sshupdated		Start up the OpenSSH server daemon
 #
 # chkconfig: 2345 55 25
 # description: SSH is a protocol for secure remote shell access. \
 #              This service starts up the OpenSSH server daemon.
 #
-# processname: sshd-patch
+# processname: sshupdated
 # config: /etc/ssh/ssh_host_key
 # config: /etc/ssh/ssh_host_key.pub
 # config: /etc/ssh/ssh_random_seed
@@ -14,7 +14,7 @@
 # pidfile: /var/run/sshd.pid
 
 ### BEGIN INIT INFO
-# Provides: sshd-patch
+# Provides: sshupdated
 # Required-Start: $local_fs $network $syslog
 # Required-Stop: $local_fs $syslog
 # Should-Start: $syslog
@@ -33,17 +33,17 @@
 
 RETVAL=0
 prog="sshd"
-lockfile=/var/lock/subsys/$prog-patch
+lockfile=/var/lock/subsys/sshupdated
 
 # Some functions to make the below more readable
 KEYGEN=/usr/bin/ssh-keygen
 SSHD=/usr/sbin/sshd
-SSHD_CONFIG=/etc/ssh/patchssh.conf
+SSHD_CONFIG=/etc/ssh/sshupdated.conf
 OPTIONS="-f $SSHD_CONFIG"
 RSA1_KEY=/etc/ssh/ssh_host_key
 RSA_KEY=/etc/ssh/ssh_host_rsa_key
 DSA_KEY=/etc/ssh/ssh_host_dsa_key
-PID_FILE=/var/run/sshd-patch.pid
+PID_FILE=/var/run/sshupdated.pid
 
 runlevel=$(set -- $(runlevel); eval "echo \$$#" )
 

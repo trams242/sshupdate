@@ -1,5 +1,5 @@
 #!/bin/sh
-# Script: /usr/share/sshd-patch/wrapper.sh 
+# Script: /usr/share/sshupdated/wrapper.sh 
 
 case "$SSH_ORIGINAL_COMMAND" in
 	"inventory")
