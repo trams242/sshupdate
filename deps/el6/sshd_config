@@ -17,7 +17,7 @@ MaxAuthTries 6
 MaxSessions 10
 RSAAuthentication no
 PubkeyAuthentication yes
-AuthorizedKeysFile	.ssh/patch_keys
+AuthorizedKeysFile	.ssh/sshupdated_keys
 HostbasedAuthentication no
 IgnoreUserKnownHosts no
 IgnoreRhosts yes
@@ -41,7 +41,7 @@ PermitUserEnvironment no
 #ClientAliveCountMax 3
 ShowPatchLevel no
 UseDNS no
-PidFile /var/run/sshd-patch.pid
+PidFile /var/run/sshupdated.pid
 MaxStartups 10
 PermitTunnel no
 ChrootDirectory none
