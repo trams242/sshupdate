@@ -1,0 +1,64 @@
+# No debuginfo:
+%define debug_package %{nil}
+
+%define name      patchssh
+%define summary   scripts and configs for patching over ssh
+%define version   0.1
+%define release   1
+%define license   BSD License
+%define group     Networking/WWW
+%define source    %{name}-%version.tar.gz
+%define url       https://www.romab.com/PatchSSH
+%define vendor    Robert Malmgren AB
+%define packager  Romab packaging team
+%define buildroot %{_tmppath}/%{name}-root
+%define _prefix   /
+
+Name:      %{name}
+Summary:   %{summary}
+Version:   %{version}
+Release:   %{release}
+License:   %{license}
+Group:     %{group}
+Source0:   %{source}
+BuildArch: noarch
+Requires:  openssh-server
+Requires(post): policycoreutils, initscripts
+Requires(preun): policycoreutils, initscripts
+Requires(postun): policycoreutils
+Provides:  %{name}
+URL:       %{url}
+Buildroot: %{buildroot}
+
+%description
+This package contains startscripts and public keys for
+centralized patching over sshd.
+
+For further information, see the documentation
+
+%prep
+
+%setup
+
+%build
+
+%install
+install -d %{buildroot}%{_prefix}/
+
+tar cf - . | (cd %{buildroot}%{_prefix}/; tar xfp -)
+
+%pre
+
+%post
+
+%postun
+
+%clean
+rm -rf %{buildroot}
+
+%files
+%attr(0755, root, root) /etc/rc.d/init.d/patchssh
+%attr(0600, root, root) /etc/ssh/patchssh.conf
+%attr(0600, root, root) /root/.ssh/patch_keys
+%attr(0700, root, root) /usr/share/patchssh
+%attr(0600, root, root) /usr/share/patchssh/wrapper.sh

@@ -1,0 +1,47 @@
+Port 2222
+AddressFamily inet
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+
+Protocol 2
+
+# HostKeys for protocol version 2
+#HostKey /etc/ssh/ssh_host_rsa_key
+#HostKey /etc/ssh/ssh_host_dsa_key
+SyslogFacility AUTHPRIV
+LogLevel INFO
+LoginGraceTime 2m
+PermitRootLogin forced-commands-only
+StrictModes yes
+MaxAuthTries 6
+MaxSessions 10
+RSAAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile	.ssh/patch_keys
+HostbasedAuthentication no
+IgnoreUserKnownHosts no
+IgnoreRhosts yes
+PermitEmptyPasswords no
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+KerberosAuthentication no
+GSSAPIAuthentication no
+UsePAM yes
+AllowAgentForwarding no
+AllowTcpForwarding no
+GatewayPorts no
+X11Forwarding no
+PrintLastLog no
+TCPKeepAlive yes
+UseLogin no
+UsePrivilegeSeparation yes
+PermitUserEnvironment no
+#Compression delayed
+#ClientAliveInterval 0
+#ClientAliveCountMax 3
+ShowPatchLevel no
+UseDNS no
+PidFile /var/run/sshd-patch.pid
+MaxStartups 10
+PermitTunnel no
+ChrootDirectory none
