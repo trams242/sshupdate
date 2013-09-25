@@ -1,7 +1,7 @@
 # No debuginfo:
 %define debug_package %{nil}
 
-%define name      sshupdate
+%define name      sshupdated
 %define summary   scripts and configs for patching over ssh
 %define version   0.1
 %define release   1
