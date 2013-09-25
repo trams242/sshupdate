@@ -62,7 +62,7 @@ function f_create_sshd_authkeys_el6 {
 	[ -f "${DEST}/root/.ssh/${sshd_name}_keys" ] && rm ${DEST}/root/.ssh/${sshd_name}_keys
 	for key in $keys; do
 		tmpkey=`cat keys/${key}.pub`
-		echo "command=\"/usr/share/${sshd_name}/${key}\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${sshd_name}
+		echo "command=\"/usr/share/${sshd_name}/${key}\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${sshd_name}_keys
 	done
 }
 
@@ -122,7 +122,7 @@ case "$1" in
 		f_create_el6_client_rpm
 	;;
 	clean)
-		echo "Sorry, not implemented yet."
+		rm -rf /var/tmp/${sshd_name}-root/
 	;;
 	init)
 		f_genkeys

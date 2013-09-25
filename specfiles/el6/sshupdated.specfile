@@ -51,8 +51,12 @@ tar cf - . | (cd %{buildroot}%{_prefix}/; tar xfp -)
 %pre
 
 %post
+/sbin/chkconfig --add /etc/init.d/sshupdated
+service sshupdated start
 
 %postun
+service sshupdated stop
+/sbin/chkconfig --del /etc/init.d/sshupdated
 
 %clean
 rm -rf %{buildroot}
