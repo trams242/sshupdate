@@ -66,4 +66,4 @@ rm -rf %{buildroot}
 %attr(0600, root, root) /etc/ssh/sshupdated.conf
 %attr(0600, root, root) /root/.ssh/sshupdated_keys
 %attr(0700, root, root) /usr/share/sshupdated
-%attr(0600, root, root) /usr/share/sshupdated/wrapper.sh
+%attr(0700, root, root) /usr/share/sshupdated/wrapper.sh

@@ -62,7 +62,7 @@ function f_create_sshd_authkeys_el6 {
 	[ -f "${DEST}/root/.ssh/${sshd_name}_keys" ] && rm ${DEST}/root/.ssh/${sshd_name}_keys
 	for key in $keys; do
 		tmpkey=`cat keys/${key}.pub`
-		echo "command=\"/usr/share/${sshd_name}/${key}\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${sshd_name}_keys
+		echo "command=\"/usr/share/${sshd_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${sshd_name}_keys
 	done
 }
 
