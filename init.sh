@@ -113,6 +113,11 @@ function f_build_rpm_el6  {
   cd ../tmp 
   tar zcf ~/rpmbuild/SOURCES/${sshd_name}-${version}.tar.gz . 
   print_line "Building RPM based on scripts:"
+  if [ ! -f $RPMBUILD ]; then
+	echo "No rpmbuild installed. exiting. ($RPMBUILD)"
+	echo "try yum install rpm-build"
+	exit 1
+  fi
   rpmbuild -bb ../specfiles/el6/${sshd_name}.specfile > /dev/null 2>&1
   print_success $?
   echo -e "\nClient RPM available in: /root/rpmbuild/RPMS/noarch/${sshd_name}-${version}-1.noarch.rpm"
