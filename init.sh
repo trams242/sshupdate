@@ -22,7 +22,9 @@ sshd_port=2222
 sshd_inet="any"
 
 # What do we call the service
-sshd_name="sshupdated"
+# Please remember, the server does not run a daemon, only the client does that
+server_service_name="sshupdate"
+client_service_name="sshupdated"
 
 # Where should we build the RPM
 RPM_ROOT=./RPM-ROOT
@@ -37,8 +39,9 @@ pkgs=./pkgs
 # Making sure we have a sane path
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
+RPMBUILD=/usr/bin/rpmbuild
+
 # Some variables needed for fancy output
-TPUT=/usr/bin/tput
 COLS=$($TPUT cols)
 COL=$(($COLS-8))
 UP=$($TPUT cuu1)
@@ -47,7 +50,6 @@ END=$($TPUT hpa $COL)
 NORMAL=$($TPUT op)
 GREEN=$($TPUT setaf 2)
 RED=$($TPUT setaf 1)
-RPMBUILD=/usr/bin/rpmbuild
 
 ### Functions
 # To be used to print success on a previous command, like so: print_success $?
@@ -80,21 +82,21 @@ function print_line {
 function f_create_sshd_config_el6 {
   DEST=$1
   [ -d "${DEST}" ] || mkdir -p ${DEST}
-  [ -f "${deps}/el6/sshd_config" ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/el6/sshd_config > ${DEST}/${sshd_name}.conf
+  [ -f "${deps}/el6/sshd_config" ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/el6/sshd_config > ${DEST}/${client_service_name}.conf
 }
 
 function f_create_sshd_startscripts_el6 {
   RPM_ROOT=$1
   [ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
-  [ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${sshd_name}
+  [ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${client_service_name}
 }
 
 function f_populate_scripts {
   RPM_ROOT=$1
   # Make sure directory exists
-  [ -d "${RPM_ROOT}/usr/share/${sshd_name}" ] || mkdir -p ${RPM_ROOT}/usr/share/${sshd_name}
+  [ -d "${RPM_ROOT}/usr/share/${client_service_name}" ] || mkdir -p ${RPM_ROOT}/usr/share/${client_service_name}
   # Install wrapper.sh
-  [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${sshd_name}
+  [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${client_service_name}
   # Install sshupdate
   [ -f "${deps}/el6/sshupdate" ] && cp ${deps}/el6/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
 }
@@ -102,30 +104,53 @@ function f_populate_scripts {
 function f_create_sshd_authkeys_el6 {
   DEST=$1
   mkdir -p ${DEST}/root/.ssh/
-  [ -f "${DEST}/root/.ssh/${sshd_name}_keys" ] && rm ${DEST}/root/.ssh/${sshd_name}_keys
+  [ -f "${DEST}/root/.ssh/${client_service_name}_keys" ] && rm ${DEST}/root/.ssh/${client_service_name}_keys
   for key in $keys; do
     tmpkey=`cat keys/${key}.pub`
-    echo "command=\"/usr/share/${sshd_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${sshd_name}_keys
+    echo "command=\"/usr/share/${client_service_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${client_service_name}_keys
   done
 }
 
-function f_build_rpm_el6  {
-  mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-  echo '%_topdir %(echo ${HOME})/rpmbuild' > ~/.rpmmacros
-  mkdir -p tmp/${sshd_name}-${version}
+function f_build_server_rpm_el6  {
+  mkdir -p ~/rpmbuild/server/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  echo '%_topdir %(echo ${HOME})/rpmbuild/server' > ~/.rpmmacros
+  mkdir -p tmp/${server_service_name}-${version}
   cd ${RPM_ROOT}
-  cp -r * ../tmp/${sshd_name}-${version}
+  cp -r * ../tmp/${server_service_name}-${version}
   cd ../tmp 
-  tar zcf ~/rpmbuild/SOURCES/${sshd_name}-${version}.tar.gz . 
+  tar zcf ~/rpmbuild/server/SOURCES/${server_service_name}-${version}.tar.gz . 
   print_line "Building RPM based on scripts:"
   if [ ! -f $RPMBUILD ]; then
 	echo "No rpmbuild installed. exiting. ($RPMBUILD)"
 	echo "try yum install rpm-build"
 	exit 1
   fi
-  rpmbuild -bb ../specfiles/el6/${sshd_name}.specfile > /dev/null 2>&1
+  rpmbuild -bb ../specfiles/el6/${server_service_name}.specfile > /dev/null 2>&1
   print_success $?
-  echo -e "\nClient RPM available in: /root/rpmbuild/RPMS/noarch/${sshd_name}-${version}-1.noarch.rpm"
+  echo -e "\nServer RPM available in: /root/rpmbuild/server/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm"
+}
+
+function f_build_client_rpm_el6  {
+  mkdir -p ~/rpmbuild/client/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  echo '%_topdir %(echo ${HOME})/rpmbuild/client' > ~/.rpmmacros
+  mkdir -p tmp/${client_service_name}-${version}
+  cd ${RPM_ROOT}
+  cp -r * ../tmp/${client_service_name}-${version}
+  cd ../tmp 
+  tar zcf ~/rpmbuild/client/SOURCES/${client_service_name}-${version}.tar.gz . 
+  print_line "Building RPM based on scripts:"
+  if [ ! -f $RPMBUILD ]; then
+	echo "No rpmbuild installed. exiting. ($RPMBUILD)"
+	echo "try yum install rpm-build"
+	exit 1
+  fi
+  rpmbuild -bb ../specfiles/el6/${client_service_name}.specfile > /dev/null 2>&1
+  print_success $?
+  echo -e "\nClient RPM available in: /root/rpmbuild/client/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm"
+}
+
+function f_create_el6_client_rpm {
+  f_build_server_rpm_el6 ${pkgs}/${client_service_name}-el6/${client_service_name}.spec
 }
 
 function f_create_el6_client_rpm {
@@ -133,7 +158,7 @@ function f_create_el6_client_rpm {
   f_create_sshd_startscripts_el6 ${RPM_ROOT}
   f_populate_scripts ${RPM_ROOT}
   f_create_sshd_authkeys_el6 ${RPM_ROOT}
-  f_build_rpm_el6 ${pkgs}/${sshd_name}-el6/${sshd_name}.spec
+  f_build_client_rpm_el6 ${pkgs}/${client_service_name}-el6/${client_service_name}.spec
 }
 
 function f_genkeys {
@@ -145,7 +170,7 @@ function f_genkeys {
       ssh-keygen -t $keytype -b ${keysize} -f keys/${key}
       print_success $?
     else
-      print_success $? "${sshd_name}-key already exist (keys/${key})"
+      print_success $? "${client_service_name}-key already exist (keys/${key})"
     fi
   done
 }
@@ -155,7 +180,9 @@ PROG=$(basename $0)
   cat << EOF
 $PROG options:
 	$PROG gen-keys - Generate ssh-keys
-	$PROG build-rpm - Create client rpm
+	$PROG build-rpm - Create rpm's
+	$PROG build-client-rpm - Create client rpm
+	$PROG build-server-rpm - Create server rpm
 	$PROG clean - Clean failed build
 	$PROG init - Run gen-keys, then build-rpm
 
@@ -172,13 +199,21 @@ case "$1" in
   ;;
   build-rpm)
     f_create_el6_client_rpm
+    f_create_el6_server_rpm
+  ;;
+  build-rpm)
+    f_create_el6_client_rpm
+  ;;
+  build-server-rpm)
+    f_create_el6_server_rpm
   ;;
   clean)
-    rm -rf /var/tmp/${sshd_name}-root/
+    rm -rf /var/tmp/${client_service_name}-root/
   ;;
   init)
     f_genkeys
     f_create_el6_client_rpm
+    f_create_el6_server_rpm
   ;;
   *)
     f_help
