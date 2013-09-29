@@ -37,98 +37,140 @@ pkgs=./pkgs
 # Making sure we have a sane path
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
+# Some variables needed for fancy output
+TPUT=/usr/bin/tput
+COLS=$($TPUT cols)
+COL=$(($COLS-8))
+UP=$($TPUT cuu1)
+START=$($TPUT hpa 0)
+END=$($TPUT hpa $COL)
+NORMAL=$($TPUT op)
+GREEN=$($TPUT setaf 2)
+RED=$($TPUT setaf 1)
+
 ### Functions
+# To be used to print success on a previous command, like so: print_success $?
+function print_success {
+  if [ $1 -eq 0 ]
+  then
+    STATUS="${GREEN}ok"
+  else
+    STATUS="${RED}fail"
+  fi
+  if [ ! -z "$2" ]
+  then
+    REASON=$2
+    /bin/echo -e " [ ${STATUS}${NORMAL} ]\n  Reason: $REASON"
+  else
+    /bin/echo -e " [ ${STATUS}${NORMAL} ]"
+  fi
+}
+
+# Used in conjunction with print_success
+function print_line {
+  if [ -z "$1" ]
+  then
+    echo
+  else
+    echo -n $@
+  fi
+}
+
 function f_create_sshd_config_el6 {
-	DEST=$1
-        [ -d "${DEST}" ] || mkdir -p ${DEST}
-        [ -f "${deps}/el6/sshd_config" ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/el6/sshd_config > ${DEST}/${sshd_name}.conf
+  DEST=$1
+  [ -d "${DEST}" ] || mkdir -p ${DEST}
+  [ -f "${deps}/el6/sshd_config" ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/el6/sshd_config > ${DEST}/${sshd_name}.conf
 }
 
 function f_create_sshd_startscripts_el6 {
-	RPM_ROOT=$1
-	[ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
-	[ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${sshd_name}
+  RPM_ROOT=$1
+  [ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
+  [ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${sshd_name}
 }
 
 function f_populate_scripts {
-	RPM_ROOT=$1
-	[ -d "${RPM_ROOT}/usr/share/${sshd_name}" ] || mkdir -p ${RPM_ROOT}/usr/share/${sshd_name}
-	[ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${sshd_name}
+  RPM_ROOT=$1
+  [ -d "${RPM_ROOT}/usr/share/${sshd_name}" ] || mkdir -p ${RPM_ROOT}/usr/share/${sshd_name}
+  [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${sshd_name}
 }
 
 function f_create_sshd_authkeys_el6 {
-	DEST=$1
-	mkdir -p ${DEST}/root/.ssh/
-	[ -f "${DEST}/root/.ssh/${sshd_name}_keys" ] && rm ${DEST}/root/.ssh/${sshd_name}_keys
-	for key in $keys; do
-		tmpkey=`cat keys/${key}.pub`
-		echo "command=\"/usr/share/${sshd_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${sshd_name}_keys
-	done
+  DEST=$1
+  mkdir -p ${DEST}/root/.ssh/
+  [ -f "${DEST}/root/.ssh/${sshd_name}_keys" ] && rm ${DEST}/root/.ssh/${sshd_name}_keys
+  for key in $keys; do
+    tmpkey=`cat keys/${key}.pub`
+    echo "command=\"/usr/share/${sshd_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEST}/root/.ssh/${sshd_name}_keys
+  done
 }
 
 function f_build_rpm_el6  {
-	mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-	echo '%_topdir %(echo ${HOME})/rpmbuild' > ~/.rpmmacros
-	mkdir -p tmp/${sshd_name}-${version}
-	cd ${RPM_ROOT}
-	cp -r * ../tmp/${sshd_name}-${version}
-	cd ../tmp 
-	tar zcvf ~/rpmbuild/SOURCES/${sshd_name}-${version}.tar.gz . 
-	rpmbuild -bb ../specfiles/el6/${sshd_name}.specfile
+  mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  echo '%_topdir %(echo ${HOME})/rpmbuild' > ~/.rpmmacros
+  mkdir -p tmp/${sshd_name}-${version}
+  cd ${RPM_ROOT}
+  cp -r * ../tmp/${sshd_name}-${version}
+  cd ../tmp 
+  tar zcf ~/rpmbuild/SOURCES/${sshd_name}-${version}.tar.gz . 
+  print_line "Building RPM based on scripts:"
+  rpmbuild -bb ../specfiles/el6/${sshd_name}.specfile > /dev/null 2>&1
+  print_success $?
+  echo -e "\nClient RPM available in: /root/rpmbuild/RPMS/noarch/${sshd_name}-${version}-1.noarch.rpm"
 }
 
 function f_create_el6_client_rpm {
-	f_create_sshd_config_el6 ${RPM_ROOT}/etc/ssh
-	f_create_sshd_startscripts_el6 ${RPM_ROOT}
-	f_populate_scripts ${RPM_ROOT}
-	f_create_sshd_authkeys_el6 ${RPM_ROOT}
-	f_build_rpm_el6 ${pkgs}/${sshd_name}-el6/${sshd_name}.spec
+  f_create_sshd_config_el6 ${RPM_ROOT}/etc/ssh
+  f_create_sshd_startscripts_el6 ${RPM_ROOT}
+  f_populate_scripts ${RPM_ROOT}
+  f_create_sshd_authkeys_el6 ${RPM_ROOT}
+  f_build_rpm_el6 ${pkgs}/${sshd_name}-el6/${sshd_name}.spec
 }
 
 function f_genkeys {
-for key in $keys; do
-	if [ ! -f keys/$key ]; then
-		umask 077
-		mkdir -p ./keys	
-		ssh-keygen -t $keytype -b ${keysize} -f keys/${key}
-	else
-		echo "${sshd_name}-key already exist (keys/${key})"
-	fi
-done
+  print_line "Generating keys"
+  for key in $keys; do
+    if [ ! -f keys/$key ]; then
+      umask 077
+      mkdir -p ./keys	
+      ssh-keygen -t $keytype -b ${keysize} -f keys/${key}
+      print_success $?
+    else
+      print_success $? "${sshd_name}-key already exist (keys/${key})"
+    fi
+  done
 }
 
-#main
 function f_help {
-cat << EOF
-$0 options:
-	$0 gen-keys - Generate ssh-keys
-	$0 build-rpm - Create client rpm
-	$0 clean - Clean failed build
-	$0 init - Run gen-keys, then build-rpm
+PROG=$(basename $0)
+  cat << EOF
+$PROG options:
+	$PROG gen-keys - Generate ssh-keys
+	$PROG build-rpm - Create client rpm
+	$PROG clean - Clean failed build
+	$PROG init - Run gen-keys, then build-rpm
 
-Note: $0 uses relative paths.
-
+Note: $PROG uses relative paths.
 EOF
 }
 
 
 
-
+### Main
 case "$1" in 
-	gen-keys)
-		f_genkeys
-	;;
-	build-rpm)
-		f_create_el6_client_rpm
-	;;
-	clean)
-		rm -rf /var/tmp/${sshd_name}-root/
-	;;
-	init)
-		f_genkeys
-		f_create_el6_client_rpm
-	;;
-	*)
-	f_help
-	;;
+  gen-keys)
+    f_genkeys
+  ;;
+  build-rpm)
+    f_create_el6_client_rpm
+  ;;
+  clean)
+    rm -rf /var/tmp/${sshd_name}-root/
+  ;;
+  init)
+    f_genkeys
+    f_create_el6_client_rpm
+  ;;
+  *)
+    f_help
+  ;;
 esac
