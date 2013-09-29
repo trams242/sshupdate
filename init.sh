@@ -47,6 +47,7 @@ END=$($TPUT hpa $COL)
 NORMAL=$($TPUT op)
 GREEN=$($TPUT setaf 2)
 RED=$($TPUT setaf 1)
+RPMBUILD=/usr/bin/rpmbuild
 
 ### Functions
 # To be used to print success on a previous command, like so: print_success $?
