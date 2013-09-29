@@ -96,7 +96,7 @@ function f_populate_scripts {
   # Install wrapper.sh
   [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${sshd_name}
   # Install sshupdate
-  [ -f "${deps}/el6/sshupdate" ] && cp ${deps}/el6/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
+  [ -f "${deps}/el6/sshupdate" ] && mkdir -p ${RPM_ROOT}/usr/sbin && cp ${deps}/el6/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
 }
 
 function f_create_sshd_authkeys_el6 {
