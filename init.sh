@@ -91,8 +91,12 @@ function f_create_sshd_startscripts_el6 {
 
 function f_populate_scripts {
   RPM_ROOT=$1
+  # Make sure directory exists
   [ -d "${RPM_ROOT}/usr/share/${sshd_name}" ] || mkdir -p ${RPM_ROOT}/usr/share/${sshd_name}
+  # Install wrapper.sh
   [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${sshd_name}
+  # Install sshupdate
+  [ -f "${deps}/el6/sshupdate" ] && cp ${deps}/el6/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
 }
 
 function f_create_sshd_authkeys_el6 {
