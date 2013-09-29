@@ -11,6 +11,16 @@ case "$SSH_ORIGINAL_COMMAND" in
 	"available-updates")
 		/usr/bin/yum list updates
 		;;
+	"patch-n-reboot")
+		/usr/bin/yum update -y --quiet
+		LAST_KERNEL=$(rpm -q --last kernel | sed 's/^kernel-\([a-z0-9._-]*\).*/\1/g' | head -1)
+		CURRENT_KERNEL=$(uname -r)
+		if [ $LAST_KERNEL != $CURRENT_KERNEL ]; then
+			wall "Warning: System will reboot in 1 min"
+			sleep 60
+			init 6
+		fi
+                ;;	
 	"reboot-if-needed")
 		LAST_KERNEL=$(rpm -q --last kernel | sed 's/^kernel-\([a-z0-9._-]*\).*/\1/g' | head -1)
 		CURRENT_KERNEL=$(uname -r)
