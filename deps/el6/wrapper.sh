@@ -24,7 +24,7 @@ case "$SSH_ORIGINAL_COMMAND" in
 	"reboot-if-needed")
 		LAST_KERNEL=$(rpm -q --last kernel | sed 's/^kernel-\([a-z0-9._-]*\).*/\1/g' | head -1)
 		CURRENT_KERNEL=$(uname -r)
-		test $LAST_KERNEL = $CURRENT_KERNEL || echo REBOOT
+		test $LAST_KERNEL = $CURRENT_KERNEL || init 6
 		;;
 	"check-if-reboot-req")
 		LAST_KERNEL=$(rpm -q --last kernel | sed 's/^kernel-\([a-z0-9._-]*\).*/\1/g' | head -1)
