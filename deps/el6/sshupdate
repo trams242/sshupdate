@@ -1,0 +1,69 @@
+#!/bin/bash
+# Description:
+# Script that is intended to run at the server host that is managing all clients.
+# This is the command that will instruct the clients what to do etc. 
+#
+# Essentially it is supposed to replicate the commands from wrapper.sh:
+# awk -F"\"" '$NF ~ /^\)/ { print $2 }' wrapper.sh
+
+### Variables
+SSHKEY=/root/sshupdate/keys/sshupdated
+SSHPORT=2222
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+### Arguments
+ACTION=$1
+TARGET=$2
+
+### Functions
+function f_help {
+  PROG=$(basename $0)
+  echo -e "Usage: $PROG action target\n"
+  echo "$PROG actions:"
+  for FUNC in $(awk -F"\"" '$NF ~ /^\)/ { print $2 }' $0)
+  do
+    echo "  $FUNC"
+  done
+  echo -e "\nNote: $PROG uses relative paths."
+  exit 1
+}
+
+function sshupdate {
+  if [ ! -z $1 ] && [ -z $2 ]
+  then
+    echo -e "Missing target.\n"
+    f_help
+  fi
+
+  ssh -i ${SSHKEY} $2 -p ${SSHPORT} $1
+}
+
+### Main
+[ "$#" -eq "0" ] && f_help
+
+case "$ACTION" in
+  "inventory")
+    sshupdate ${ACTION} ${TARGET}
+  ;;
+  "patch")
+    sshupdate ${ACTION} ${TARGET}
+  ;;
+  "available-updates")
+    sshupdate ${ACTION} ${TARGET}
+  ;;
+  "patch-n-reboot")
+    sshupdate ${ACTION} ${TARGET}
+  ;;
+  "reboot-if-needed")
+    sshupdate ${ACTION} ${TARGET}
+  ;;
+  "check-if-reboot-req")
+    sshupdate ${ACTION} ${TARGET}
+  ;;
+  *)
+    echo -e "Invalid action.\n"
+    f_help
+  ;;
+esac
+
