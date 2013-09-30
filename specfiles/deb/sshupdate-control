@@ -1,0 +1,18 @@
+Package: sshupdate
+Architecture: all
+Maintainer: sshupdate packaging team
+Depends: debconf (>= 0.5.00)
+Priority: optional
+Version: 0.1
+Description: scripts and commands for patching over ssh
+ This package contains startscripts and public keys for
+ centralized patching over sshd.
+ .
+ Please note, this is the package that is intended
+ to be installed on your server. 
+ .
+ If you're looking for the daemon that runs on each
+ client, please look at the sshupdated package.
+ .
+ For further information, see the documentation at:
+ https://github.com/trams242/sshupdate
