@@ -6,10 +6,15 @@
 # Essentially it is supposed to replicate the commands from wrapper.sh:
 # awk -F"\"" '$NF ~ /^\)/ { print $2 }' wrapper.sh
 
-### Variables
-SSHKEY=/root/sshupdate/keys/sshupdated
-SSHPORT=2222
+### Import existing config
+[ -f /etc/sshupdate/config ] && source /etc/sshupdate/config
+[ -f ~/.sshupdate/config ] && source ~/.sshupdate/config
 
+### Variables
+SSHKEY=${SSHKEY-~/sshupdate/keys/sshupdated}
+SSHPORT=${SSHPORT-2222}
+
+# Sane PATH
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
 ### Arguments
@@ -29,7 +34,7 @@ function f_help {
   exit 1
 }
 
-function sshupdate {
+function f_sshupdate {
   if [ ! -z $1 ] && [ -z $2 ]
   then
     echo -e "Missing target.\n"
@@ -39,27 +44,56 @@ function sshupdate {
   ssh -i ${SSHKEY} $2 -p ${SSHPORT} $1
 }
 
+function f_query_user {
+  while true
+  do
+    echo $1
+    echo -n "Answer: "
+    read QUERY_ANSWER
+    if [ "$2" = "check_file" ]
+    then
+      [ -e "$QUERY_ANSWER" ] && break
+    else 
+      [ ! -z "$QUERY_ANSWER" ] && break 
+    fi
+  done
+}
+
+function f_check_config {
+  if [ ! -f /etc/sshupdate/config ] && [ ! -f ~/sshupdate/config ]
+  then
+    [ ! -d ~/sshupdate ] && mkdir -p ~/sshupdate
+    f_query_user "Where are your SSH-keys for sshupdated located?" check_file
+    echo "SSHKEY=${QUERY_ANSWER}" >> ~/sshupdate/config
+    f_query_user "Which port do you want to use?"
+    echo "SSHPORT=${QUERY_ANSWER}" >> ~/sshupdate/config
+  fi
+}
+
 ### Main
+f_check_config
+
 [ "$#" -eq "0" ] && f_help
+
 
 case "$ACTION" in
   "inventory")
-    sshupdate ${ACTION} ${TARGET}
+    f_sshupdate ${ACTION} ${TARGET}
   ;;
   "patch")
-    sshupdate ${ACTION} ${TARGET}
+    f_sshupdate ${ACTION} ${TARGET}
   ;;
   "available-updates")
-    sshupdate ${ACTION} ${TARGET}
+    f_sshupdate ${ACTION} ${TARGET}
   ;;
   "patch-n-reboot")
-    sshupdate ${ACTION} ${TARGET}
+    f_sshupdate ${ACTION} ${TARGET}
   ;;
   "reboot-if-needed")
-    sshupdate ${ACTION} ${TARGET}
+    f_sshupdate ${ACTION} ${TARGET}
   ;;
   "check-if-reboot-req")
-    sshupdate ${ACTION} ${TARGET}
+    f_sshupdate ${ACTION} ${TARGET}
   ;;
   *)
     echo -e "Invalid action.\n"
