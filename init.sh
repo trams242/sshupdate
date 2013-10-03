@@ -163,18 +163,45 @@ function f_create_client_package_deb {
   [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
   # Create DEB_ROOT/sshupdated/DEBIAN
   [ -d "${DEB_ROOT}/sshupdated/DEBIAN" ] || mkdir -p ${DEB_ROOT}/sshupdated/DEBIAN
-  # Copy specfiles/deb/sshupdated-control to DEB-ROOT/sshupdated/DEBIAN/
-  cp ${MYDIR}/specfiles/deb/${client_service_name}-control ${DEB_ROOT}/sshupdated/DEBIAN/
-  # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/
-  cp ${MYDIR}/specfiles/deb/${client_service_name}-conffiles ${DEB_ROOT}/sshupdated/DEBIAN/
+  # Copy specfiles/deb/sshupdated-control to DEB-ROOT/sshupdated/DEBIAN/control
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-control ${DEB_ROOT}/sshupdated/DEBIAN/control
+  # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/conffiles
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-conffiles ${DEB_ROOT}/sshupdated/DEBIAN/conffiles
   # Create a working fakeroot/filestructure with files you want
   [ -d "${DEB_ROOT}/sshupdated/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/sbin 
-  [ -f "/usr/bin/dpkg-deb" ] && dpkg-deb --build DEB-ROOT/sshupdated || ( echo "dpkg-deb not found, please install" ; exit 1 )
-  # Install DEB-ROOT/sshupdated.deb
+  [ -f "${DEB_ROOT}/sshupdated/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdated/etc/sshupdate/config
+  [ -d "${DEB_ROOT}/sshupdated/etc/rc.d/init.d" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/rc.d/init.d
+  [ -d "${DEB_ROOT}/sshupdated/etc/ssh" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/ssh
+  [ -d "${DEB_ROOT}/sshupdated/usr/share/sshupdated" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/share/sshupdated
+  [ -f "${deps}/common/sshd_config" ] && cp ${deps}/common/sshd_config ${DEB_ROOT}/sshupdated/etc/ssh/${client_service_name}.conf
+  [ -f "${deps}/deb/startscript" ] && cp ${deps}/deb/startscript ${DEB_ROOT}/sshupdated/etc/rc.d/init.d/${client_service_name}
+  [ -f "${deps}/deb/wrapper.sh" ] && cp ${deps}/deb/wrapper.sh ${DEB_ROOT}/sshupdated/usr/share/sshupdated/wrapper.sh
+  # If people want to include keys, fix this
+  #[ -d "${DEB_ROOT}/sshupdate/root/.ssh" ] || mkdir -p ${DEB_ROOT}/sshupdate/root/.ssh
+  #/root/.ssh/sshupdated_keys
+  # Create Deb
+  dpkg-deb --build DEB-ROOT/sshupdated
+  # Show where deb is located DEB-ROOT/sshupdated.deb
+  print_line "The new deb-package is found here: ${DEB_ROOT}/sshupdated.deb\n"
 }
 
 function f_create_server_package_deb {
-  echo "Function not implemented yet, working on it."
+  # Check if dpkg-deb exists
+  [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
+  # Create DEB_ROOT/sshupdate/DEBIAN
+  [ -d "${DEB_ROOT}/sshupdate/DEBIAN" ] || mkdir -p ${DEB_ROOT}/sshupdate/DEBIAN
+  # Copy specfiles/deb/sshupdate-control to DEB-ROOT/sshupdate/DEBIAN/control
+  cp ${MYDIR}/specfiles/deb/${server_service_name}-control ${DEB_ROOT}/sshupdate/DEBIAN/control
+  # Copy specfiles/deb/sshupdate-conffiles to DEB-ROOT/sshupdate/DEBIAN/conffiles
+  cp ${MYDIR}/specfiles/deb/${server_service_name}-conffiles ${DEB_ROOT}/sshupdate/DEBIAN/conffiles
+  # Create a working fakeroot/filestructure with files you want
+  [ -d "${DEB_ROOT}/sshupdate/etc/sshupdate" ] || mkdir -p ${DEB_ROOT}/sshupdate/etc/sshupdate 
+  [ -d "${DEB_ROOT}/sshupdate/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdate/usr/sbin 
+  [ -f "${DEB_ROOT}/sshupdate/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdate/etc/sshupdate/config
+  # Create Deb
+  dpkg-deb --build DEB-ROOT/sshupdate
+  # Show where deb is located DEB-ROOT/sshupdate.deb
+  print_line "The new deb-package is found here: ${DEB_ROOT}/sshupdate.deb\n"
 }
 
 ## EL6 functions
@@ -188,23 +215,6 @@ function f_create_sshd_config_el6 {
 function f_create_sshd_startscripts_el6 {
   [ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
   [ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${client_service_name}
-}
-
-## Deb functions
-
-function f_create_client_package_deb {
-  echo "Function not implemented yet, working on it."
-  # Create a DEB-ROOT/sshupdated 
-  # Create a working fakeroot/filestructure with files you want
-  # Copy specfiles/deb/sshupdated-control to DEB-ROOT/sshupdated/DEBIAN/
-  # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/
-  # Ensure specfiles/deb/sshupdated-conffiles holds the conffiles
-  # dpkg-deb --build DEB-ROOT/sshupdate
-  # Install DEB-ROOT/sshupdate.deb
-}
-
-function f_create_server_package_deb {
-  echo "Function not implemented yet, working on it."
 }
 
 ## EL6 functions
