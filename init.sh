@@ -25,7 +25,8 @@ sshd_inet="any"
 # Please remember, the server does not run a daemon, only the client does that
 server_service_name="sshupdate"
 client_service_name="sshupdated"
-#GPG STUFF
+
+# GPG STUFF
 GPG_KEY=RSA
 GPG_KEYSIZE=4096
 GPG_SUBKEY=RSA
@@ -36,8 +37,6 @@ GPG_EMAIL="sshupdated@example.com"
 GPG_EXPIRE="20161010T000000" #XXX FIXME
 GPG_SECRING=$server_service_name
 GPG_PUBRING=$server_service_name
-
-
 
 # Figure out $MYDIR
 MYDIR=$(dirname $0)
@@ -103,13 +102,40 @@ function print_line {
   fi
 }
 
+function f_query_user {
+  while true
+  do
+    echo -e "$1 [y/n]"
+    echo -n "Answer: "
+    read QUERY_ANSWER
+    if [ "$2" = "check_file" ] || [ "$2" = "check_dir" ]
+    then
+      [ -e "$QUERY_ANSWER" ] && break
+    elif [ "$2" = "yes_no" ]
+    then
+      if [[ "$QUERY_ANSWER" =~ ^[yY]*[eE]*[sS]*$ ]]
+      then
+        return 0
+        break
+      elif [[ "$QUERY_ANSWER" =~ ^[nN]*[oO]*$ ]]
+      then
+        return 1
+        break
+      fi
+    else
+      [ ! -z "$QUERY_ANSWER" ] && break
+    fi
+  done
+}
+
+
 function f_genkeys {
   print_line "Generating keys"
   for key in $keys; do
     if [ ! -f ${MYDIR}/keys/$key ]; then
       umask 077
       mkdir -p ${MYDIR}/keys	
-      ssh-keygen -t $keytype -b ${keysize} -f ${MYDIR}/keys/${key}
+      ssh-keygen -t $keytype -b ${keysize} -f ${MYDIR}/keys/${key} -N ""
       print_success $?
     else
       print_success $? "${client_service_name}-key already exist (${MYDIR}/keys/${key})"
@@ -338,15 +364,36 @@ case "$1" in
     rm -rf /var/tmp/${client_service_name}-root/
   ;;
   init)
-    f_genkeys
+    print_line "\n sshupdate - Patch Management over SSH\n"
+    print_line "\nTo make sshupdate work it requires a node to be used as\n"
+    print_line "a manager. By answering the following questions we will\n"
+    print_line "guide you through the process of creating packages that\n"
+    print_line "can be installed both on managers and clients that you\n"
+    print_line "wish to control.\n\n"
+    print_line "For additional information see:\n"
+    print_line "https://github.com/trams242/sshupdate\n\n"
+    print_line "The manager uses SSH-keys to communicate with each client\n"
+    print_line "to make this work, we need to have some keys.\n\n"
+    f_query_user "Do you already have keys generated that you'd like to use?" yes_no
+    if [ "$?" = "0" ]
+    then
+      f_query_user "\nWhere are they located?" check_file
+    else
+      print_line "\nLet's generate you some keys.\n"
+      f_genkeys
+    fi
     if [ -f /etc/redhat-release ]
     then
-      f_create_client_package_el6
-      f_create_server_package_el6
+      f_query_user "\nDo you want to create a client package?" yes_no
+      [ $? = 0 ] && f_create_client_package_el6
+      f_query_user "\nDo you want to create a server package?" yes_no
+      [ $? = 0 ] && f_create_server_package_el6
     elif [ -f /etc/debian_version ]
     then
-      f_create_client_package_deb
-      f_create_server_package_deb
+      f_query_user "\nDo you want to create a client package?" yes_no
+      [ $? = 0 ] && f_create_client_package_deb
+      f_query_user "\nDo you want to create a server package?" yes_no
+      [ $? = 0 ] && f_create_server_package_deb
     else
       echo "Im not sure which distribution you want to build packages for, skipping."
     fi
