@@ -25,7 +25,8 @@ sshd_inet="any"
 # Please remember, the server does not run a daemon, only the client does that
 server_service_name="sshupdate"
 client_service_name="sshupdated"
-#GPG STUFF
+
+# GPG STUFF
 GPG_KEY=RSA
 GPG_KEYSIZE=4096
 GPG_SUBKEY=RSA
@@ -37,8 +38,6 @@ GPG_EXPIRE="20161010T000000" #XXX FIXME
 GPG_SECRING=$server_service_name
 GPG_PUBRING=$server_service_name
 
-
-
 # Figure out $MYDIR
 MYDIR=$(dirname $0)
 if [ "${MYDIR}" = "." ]
@@ -48,6 +47,9 @@ fi
 
 # Where should we build the RPM
 RPM_ROOT=${MYDIR}/RPM-ROOT
+
+# Where should we build the DEB
+DEB_ROOT=${MYDIR}/DEB-ROOT
 
 # Where do we find the deps-directory
 deps=${MYDIR}/deps
@@ -103,13 +105,40 @@ function print_line {
   fi
 }
 
+function f_query_user {
+  while true
+  do
+    echo -e "$1 [y/n]"
+    echo -n "Answer: "
+    read QUERY_ANSWER
+    if [ "$2" = "check_file" ] || [ "$2" = "check_dir" ]
+    then
+      [ -e "$QUERY_ANSWER" ] && break
+    elif [ "$2" = "yes_no" ]
+    then
+      if [[ "$QUERY_ANSWER" =~ ^[yY]*[eE]*[sS]*$ ]]
+      then
+        return 0
+        break
+      elif [[ "$QUERY_ANSWER" =~ ^[nN]*[oO]*$ ]]
+      then
+        return 1
+        break
+      fi
+    else
+      [ ! -z "$QUERY_ANSWER" ] && break
+    fi
+  done
+}
+
+
 function f_genkeys {
   print_line "Generating keys"
   for key in $keys; do
     if [ ! -f ${MYDIR}/keys/$key ]; then
       umask 077
       mkdir -p ${MYDIR}/keys	
-      ssh-keygen -t $keytype -b ${keysize} -f ${MYDIR}/keys/${key}
+      ssh-keygen -t $keytype -b ${keysize} -f ${MYDIR}/keys/${key} -N ""
       print_success $?
     else
       print_success $? "${client_service_name}-key already exist (${MYDIR}/keys/${key})"
@@ -130,18 +159,62 @@ function f_populate_scripts {
 ## Deb functions
 
 function f_create_client_package_deb {
-  echo "Function not implemented yet, working on it."
-  # Create a DEB-ROOT/sshupdated 
+  # Check if dpkg-deb exists
+  [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
+  # Create DEB_ROOT/sshupdated/DEBIAN
+  [ -d "${DEB_ROOT}/sshupdated/DEBIAN" ] || mkdir -p ${DEB_ROOT}/sshupdated/DEBIAN
+  # Copy specfiles/deb/sshupdated-control to DEB-ROOT/sshupdated/DEBIAN/control
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-control ${DEB_ROOT}/sshupdated/DEBIAN/control
+  # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/conffiles
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-conffiles ${DEB_ROOT}/sshupdated/DEBIAN/conffiles
   # Create a working fakeroot/filestructure with files you want
-  # Copy specfiles/deb/sshupdated-control to DEB-ROOT/sshupdated/DEBIAN/
-  # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/
-  # Ensure specfiles/deb/sshupdated-conffiles holds the conffiles
-  # dpkg-deb --build DEB-ROOT/sshupdate
-  # Install DEB-ROOT/sshupdate.deb
+  [ -d "${DEB_ROOT}/sshupdated/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/sbin 
+  [ -f "${DEB_ROOT}/sshupdated/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdated/etc/sshupdate/config
+  [ -d "${DEB_ROOT}/sshupdated/etc/rc.d/init.d" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/rc.d/init.d
+  [ -d "${DEB_ROOT}/sshupdated/etc/ssh" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/ssh
+  [ -d "${DEB_ROOT}/sshupdated/usr/share/sshupdated" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/share/sshupdated
+  [ -f "${deps}/common/sshd_config" ] && cp ${deps}/common/sshd_config ${DEB_ROOT}/sshupdated/etc/ssh/${client_service_name}.conf
+  [ -f "${deps}/deb/startscript" ] && cp ${deps}/deb/startscript ${DEB_ROOT}/sshupdated/etc/rc.d/init.d/${client_service_name}
+  [ -f "${deps}/deb/wrapper.sh" ] && cp ${deps}/deb/wrapper.sh ${DEB_ROOT}/sshupdated/usr/share/sshupdated/wrapper.sh
+  # If people want to include keys, fix this
+  #[ -d "${DEB_ROOT}/sshupdate/root/.ssh" ] || mkdir -p ${DEB_ROOT}/sshupdate/root/.ssh
+  #/root/.ssh/sshupdated_keys
+  # Create Deb
+  dpkg-deb --build DEB-ROOT/sshupdated
+  # Show where deb is located DEB-ROOT/sshupdated.deb
+  print_line "The new deb-package is found here: ${DEB_ROOT}/sshupdated.deb\n"
 }
 
 function f_create_server_package_deb {
-  echo "Function not implemented yet, working on it."
+  # Check if dpkg-deb exists
+  [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
+  # Create DEB_ROOT/sshupdate/DEBIAN
+  [ -d "${DEB_ROOT}/sshupdate/DEBIAN" ] || mkdir -p ${DEB_ROOT}/sshupdate/DEBIAN
+  # Copy specfiles/deb/sshupdate-control to DEB-ROOT/sshupdate/DEBIAN/control
+  cp ${MYDIR}/specfiles/deb/${server_service_name}-control ${DEB_ROOT}/sshupdate/DEBIAN/control
+  # Copy specfiles/deb/sshupdate-conffiles to DEB-ROOT/sshupdate/DEBIAN/conffiles
+  cp ${MYDIR}/specfiles/deb/${server_service_name}-conffiles ${DEB_ROOT}/sshupdate/DEBIAN/conffiles
+  # Create a working fakeroot/filestructure with files you want
+  [ -d "${DEB_ROOT}/sshupdate/etc/sshupdate" ] || mkdir -p ${DEB_ROOT}/sshupdate/etc/sshupdate 
+  [ -d "${DEB_ROOT}/sshupdate/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdate/usr/sbin 
+  [ -f "${DEB_ROOT}/sshupdate/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdate/etc/sshupdate/config
+  # Create Deb
+  dpkg-deb --build DEB-ROOT/sshupdate
+  # Show where deb is located DEB-ROOT/sshupdate.deb
+  print_line "The new deb-package is found here: ${DEB_ROOT}/sshupdate.deb\n"
+}
+
+## EL6 functions
+
+function f_create_sshd_config_el6 {
+  DEST=${RPM_ROOT}/$1
+  [ -d "${DEST}" ] || mkdir -p ${DEST}
+  [ -f "${deps}/common/sshd_config" ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/common/sshd_config > ${DEST}/${client_service_name}.conf
+}
+
+function f_create_sshd_startscripts_el6 {
+  [ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
+  [ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${client_service_name}
 }
 
 ## EL6 functions
@@ -321,6 +394,16 @@ case "$1" in
   build-server-deb)
     f_create_server_package_deb
   ;;
+  build-deb)
+    f_create_client_package_deb
+    f_create_server_package_deb
+  ;;
+  build-client-deb)
+    f_create_client_package_deb
+  ;;
+  build-server-deb)
+    f_create_server_package_deb
+  ;;
   build-rpm)
     f_create_client_package_el6
     f_create_server_package_el6
@@ -338,15 +421,36 @@ case "$1" in
     rm -rf /var/tmp/${client_service_name}-root/
   ;;
   init)
-    f_genkeys
+    print_line "\n sshupdate - Patch Management over SSH\n"
+    print_line "\nTo make sshupdate work it requires a node to be used as\n"
+    print_line "a manager. By answering the following questions we will\n"
+    print_line "guide you through the process of creating packages that\n"
+    print_line "can be installed both on managers and clients that you\n"
+    print_line "wish to control.\n\n"
+    print_line "For additional information see:\n"
+    print_line "https://github.com/trams242/sshupdate\n\n"
+    print_line "The manager uses SSH-keys to communicate with each client\n"
+    print_line "to make this work, we need to have some keys.\n\n"
+    f_query_user "Do you already have keys generated that you'd like to use?" yes_no
+    if [ "$?" = "0" ]
+    then
+      f_query_user "\nWhere are they located?" check_file
+    else
+      print_line "\nLet's generate you some keys.\n"
+      f_genkeys
+    fi
     if [ -f /etc/redhat-release ]
     then
-      f_create_client_package_el6
-      f_create_server_package_el6
+      f_query_user "\nDo you want to create a client package?" yes_no
+      [ $? = 0 ] && f_create_client_package_el6
+      f_query_user "\nDo you want to create a server package?" yes_no
+      [ $? = 0 ] && f_create_server_package_el6
     elif [ -f /etc/debian_version ]
     then
-      f_create_client_package_deb
-      f_create_server_package_deb
+      f_query_user "\nDo you want to create a client package?" yes_no
+      [ $? = 0 ] && f_create_client_package_deb
+      f_query_user "\nDo you want to create a server package?" yes_no
+      [ $? = 0 ] && f_create_server_package_deb
     else
       echo "Im not sure which distribution you want to build packages for, skipping."
     fi
