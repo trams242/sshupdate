@@ -36,6 +36,9 @@ fi
 # Where should we build the RPM
 RPM_ROOT=${MYDIR}/RPM-ROOT
 
+# Where should we build the DEB
+DEB_ROOT=${MYDIR}/DEB-ROOT
+
 # Where do we find the deps-directory
 deps=${MYDIR}/deps
 
@@ -60,6 +63,9 @@ GREEN=$($TPUT setaf 2)
 NORMAL=$($TPUT op)
 
 ### Functions
+
+## General functions
+
 # To be used to print success on a previous command, like so: print_success $?
 function print_success {
   if [ $1 -eq 0 ]
@@ -87,15 +93,18 @@ function print_line {
   fi
 }
 
-function f_create_sshd_config_el6 {
-  DEST=${RPM_ROOT}/$1
-  [ -d "${DEST}" ] || mkdir -p ${DEST}
-  [ -f "${deps}/el6/sshd_config" ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/el6/sshd_config > ${DEST}/${client_service_name}.conf
-}
-
-function f_create_sshd_startscripts_el6 {
-  [ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
-  [ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${client_service_name}
+function f_genkeys {
+  print_line "Generating keys"
+  for key in $keys; do
+    if [ ! -f ${MYDIR}/keys/$key ]; then
+      umask 077
+      mkdir -p ${MYDIR}/keys	
+      ssh-keygen -t $keytype -b ${keysize} -f ${MYDIR}/keys/${key}
+      print_success $?
+    else
+      print_success $? "${client_service_name}-key already exist (${MYDIR}/keys/${key})"
+    fi
+  done
 }
 
 function f_populate_scripts {
@@ -105,8 +114,43 @@ function f_populate_scripts {
   # Install wrapper.sh
   [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${client_service_name}
   # Install sshupdate
-  [ -f "${deps}/el6/sshupdate" ] && mkdir -p ${RPM_ROOT}/usr/sbin && cp ${deps}/el6/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
+  [ -f "${deps}/common/sshupdate" ] && mkdir -p ${RPM_ROOT}/usr/sbin && cp ${deps}/common/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
 }
+
+## Deb functions
+
+function f_create_client_package_deb {
+  # Check if dpkg-deb exists
+  [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
+  # Create DEB_ROOT/sshupdated/DEBIAN
+  [ -d "${DEB_ROOT}/sshupdated/DEBIAN" ] || mkdir -p ${DEB_ROOT}/sshupdated/DEBIAN
+  # Copy specfiles/deb/sshupdated-control to DEB-ROOT/sshupdated/DEBIAN/
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-control ${DEB_ROOT}/sshupdated/DEBIAN/
+  # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-conffiles ${DEB_ROOT}/sshupdated/DEBIAN/
+  # Create a working fakeroot/filestructure with files you want
+  [ -d "${DEB_ROOT}/sshupdated/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/sbin 
+  [ -f "/usr/bin/dpkg-deb" ] && dpkg-deb --build DEB-ROOT/sshupdated || ( echo "dpkg-deb not found, please install" ; exit 1 )
+  # Install DEB-ROOT/sshupdated.deb
+}
+
+function f_create_server_package_deb {
+  echo "Function not implemented yet, working on it."
+}
+
+## EL6 functions
+
+function f_create_sshd_config_el6 {
+  DEST=${RPM_ROOT}/$1
+  [ -d "${DEST}" ] || mkdir -p ${DEST}
+  [ -f "${deps}/common/sshd_config" ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/common/sshd_config > ${DEST}/${client_service_name}.conf
+}
+
+function f_create_sshd_startscripts_el6 {
+  [ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
+  [ -f "${deps}/el6/startscript" ] && cp ${deps}/el6/startscript ${RPM_ROOT}/etc/rc.d/init.d/${client_service_name}
+}
+
 
 function f_create_sshd_authkeys_el6 {
   mkdir -p ${RPM_ROOT}/root/.ssh/
@@ -158,19 +202,19 @@ function f_create_sshupdate_filestructure_el6 {
   [ -d "${RPM_ROOT}/etc/sshupdate" ] || mkdir -p ${RPM_ROOT}/etc/sshupdate
   [ -d "${RPM_ROOT}/usr/sbin" ] || mkdir -p ${RPM_ROOT}/usr/sbin
   # Install sshupdate
-  [ -f "${deps}/el6/sshupdate" ] && cp ${deps}/el6/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
+  [ -f "${deps}/common/sshupdate" ] && cp ${deps}/common/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
   # Just a placeholder, empty config-file
   [ -f "${RPM_ROOT}/etc/sshupdate/config" ] || touch ${RPM_ROOT}/etc/sshupdate/config
 }
 
-function f_create_el6_server_rpm {
+function f_create_server_package_el6 {
   [ -d ${RPM_ROOT} ] && rm -rf ${RPM_ROOT}
   mkdir -p ${RPM_ROOT}
   f_create_sshupdate_filestructure_el6
   f_build_server_rpm_el6 ${pkgs}/${server_service_name}-el6/${server_service_name}.spec
 }
 
-function f_create_el6_client_rpm {
+function f_create_client_package_el6 {
   [ -d ${RPM_ROOT} ] && rm -rf ${RPM_ROOT}
   mkdir -p ${RPM_ROOT}
   f_create_sshd_config_el6 etc/ssh
@@ -180,25 +224,14 @@ function f_create_el6_client_rpm {
   f_build_client_rpm_el6 ${pkgs}/${client_service_name}-el6/${client_service_name}.spec
 }
 
-function f_genkeys {
-  print_line "Generating keys"
-  for key in $keys; do
-    if [ ! -f ${MYDIR}/keys/$key ]; then
-      umask 077
-      mkdir -p ${MYDIR}/keys	
-      ssh-keygen -t $keytype -b ${keysize} -f ${MYDIR}/keys/${key}
-      print_success $?
-    else
-      print_success $? "${client_service_name}-key already exist (${MYDIR}/keys/${key})"
-    fi
-  done
-}
-
 function f_help {
 PROG=$(basename $0)
   cat << EOF
 $PROG options:
 	$PROG gen-keys - Generate ssh-keys
+	$PROG build-deb - Create deb's
+	$PROG build-client-deb - Create client deb
+	$PROG build-server-deb - Create server deb
 	$PROG build-rpm - Create rpm's
 	$PROG build-client-rpm - Create client rpm
 	$PROG build-server-rpm - Create server rpm
@@ -214,23 +247,42 @@ case "$1" in
   gen-keys)
     f_genkeys
   ;;
+  build-deb)
+    f_create_client_package_deb
+    f_create_server_package_deb
+  ;;
+  build-client-deb)
+    f_create_client_package_deb
+  ;;
+  build-server-deb)
+    f_create_server_package_deb
+  ;;
   build-rpm)
-    f_create_el6_client_rpm
-    f_create_el6_server_rpm
+    f_create_client_package_el6
+    f_create_server_package_el6
   ;;
   build-client-rpm)
-    f_create_el6_client_rpm
+    f_create_client_package_el6
   ;;
   build-server-rpm)
-    f_create_el6_server_rpm
+    f_create_server_package_el6
   ;;
   clean)
     rm -rf /var/tmp/${client_service_name}-root/
   ;;
   init)
     f_genkeys
-    f_create_el6_client_rpm
-    f_create_el6_server_rpm
+    if [ -f /etc/redhat-release ]
+    then
+      f_create_client_package_el6
+      f_create_server_package_el6
+    elif [ -f /etc/debian_version ]
+    then
+      f_create_client_package_deb
+      f_create_server_package_deb
+    else
+      echo "Im not sure which distribution you want to build packages for, skipping."
+    fi
   ;;
   *)
     f_help
