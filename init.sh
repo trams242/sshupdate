@@ -173,7 +173,6 @@ function f_create_client_package_deb {
   cp -p ${MYDIR}/specfiles/deb/${client_service_name}-prerm ${DEB_ROOT}/sshupdated/DEBIAN/prerm
   # Create a working fakeroot/filestructure with files you want
   [ -d "${DEB_ROOT}/sshupdated/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/sbin 
-  [ -f "${DEB_ROOT}/sshupdated/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdated/etc/sshupdate/config
   [ -d "${DEB_ROOT}/sshupdated/etc/init.d" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/init.d
   [ -d "${DEB_ROOT}/sshupdated/etc/ssh" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/ssh
   [ -d "${DEB_ROOT}/sshupdated/usr/share/sshupdated" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/share/sshupdated
@@ -199,9 +198,12 @@ function f_create_server_package_deb {
   # Copy specfiles/deb/sshupdate-conffiles to DEB-ROOT/sshupdate/DEBIAN/conffiles
   cp ${MYDIR}/specfiles/deb/${server_service_name}-conffiles ${DEB_ROOT}/sshupdate/DEBIAN/conffiles
   # Create a working fakeroot/filestructure with files you want
+  # Install config-file
   [ -d "${DEB_ROOT}/sshupdate/etc/sshupdate" ] || mkdir -p ${DEB_ROOT}/sshupdate/etc/sshupdate 
-  [ -d "${DEB_ROOT}/sshupdate/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdate/usr/sbin 
   [ -f "${DEB_ROOT}/sshupdate/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdate/etc/sshupdate/config
+  # Insert sshupdate-script
+  [ -d "${DEB_ROOT}/sshupdate/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdate/usr/sbin 
+  [ -f "${deps}/common/sshupdate" ] && cp ${deps}/common/sshupdate ${DEB_ROOT}/sshupdate/usr/sbin/
   # Create Deb
   dpkg-deb --build DEB-ROOT/sshupdate
   # Show where deb is located DEB-ROOT/sshupdate.deb
