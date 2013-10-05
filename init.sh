@@ -167,14 +167,18 @@ function f_create_client_package_deb {
   cp ${MYDIR}/specfiles/deb/${client_service_name}-control ${DEB_ROOT}/sshupdated/DEBIAN/control
   # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/conffiles
   cp ${MYDIR}/specfiles/deb/${client_service_name}-conffiles ${DEB_ROOT}/sshupdated/DEBIAN/conffiles
+  # Post install
+  cp -p ${MYDIR}/specfiles/deb/${client_service_name}-postinst ${DEB_ROOT}/sshupdated/DEBIAN/postinst
+  # Pre rm
+  cp -p ${MYDIR}/specfiles/deb/${client_service_name}-prerm ${DEB_ROOT}/sshupdated/DEBIAN/prerm
   # Create a working fakeroot/filestructure with files you want
   [ -d "${DEB_ROOT}/sshupdated/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/sbin 
   [ -f "${DEB_ROOT}/sshupdated/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdated/etc/sshupdate/config
-  [ -d "${DEB_ROOT}/sshupdated/etc/rc.d/init.d" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/rc.d/init.d
+  [ -d "${DEB_ROOT}/sshupdated/etc/init.d" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/init.d
   [ -d "${DEB_ROOT}/sshupdated/etc/ssh" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/ssh
   [ -d "${DEB_ROOT}/sshupdated/usr/share/sshupdated" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/share/sshupdated
   [ -f "${deps}/common/sshd_config" ] && cp ${deps}/common/sshd_config ${DEB_ROOT}/sshupdated/etc/ssh/${client_service_name}.conf
-  [ -f "${deps}/deb/startscript" ] && cp ${deps}/deb/startscript ${DEB_ROOT}/sshupdated/etc/rc.d/init.d/${client_service_name}
+  [ -f "${deps}/deb/startscript" ] && cp ${deps}/deb/startscript ${DEB_ROOT}/sshupdated/etc/init.d/${client_service_name}
   [ -f "${deps}/deb/wrapper.sh" ] && cp ${deps}/deb/wrapper.sh ${DEB_ROOT}/sshupdated/usr/share/sshupdated/wrapper.sh
   # If people want to include keys, fix this
   #[ -d "${DEB_ROOT}/sshupdate/root/.ssh" ] || mkdir -p ${DEB_ROOT}/sshupdate/root/.ssh

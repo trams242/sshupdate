@@ -39,7 +39,7 @@ PermitUserEnvironment no
 #Compression delayed
 #ClientAliveInterval 0
 #ClientAliveCountMax 3
-ShowPatchLevel no
+#ShowPatchLevel no
 UseDNS no
 PidFile /var/run/sshupdated.pid
 MaxStartups 10
