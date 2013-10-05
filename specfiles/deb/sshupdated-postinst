@@ -1,0 +1,2 @@
+/usr/sbin/update-rc.d sshupdated defaults
+service sshupdated start
