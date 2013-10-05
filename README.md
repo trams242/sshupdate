@@ -18,8 +18,9 @@ How it works
 
 After you've installed a master server. Each client where you install sshupdate will be controlled by your self-assigned master. The master will communicate via SSH by using keys and pre-configured commands. sshupdate is locked down in such a way that the master can only do a specific set of commands on each client, nothing else.
 
-Let's say you want to patch a server:
- Command: sshupdate patch myspecialserver
+Let's say you want to patch a server:<br>
+ Command: sshupdate patch myspecialserver<br>
+
  What happens?
   1. sshupdate opens a connection to myspecialserver via SSH using its keys 
   2. sshupdate issues the pre-configured command 'patch' on myspecialserver
@@ -32,7 +33,7 @@ Supported platforms
 We are doing what we can to support as many platforms as possible.<br>
 
 Currently tested platforms: EL6, Debian<br>
-Planned platforms: Ubuntu, Fedora, OpenSUSE
+Planned platforms: Ubuntu, Fedora, OpenSUSE<br>
 Thinking about: AIX, FreeBSD, Solaris<br>
 
 As we are looking to support more platforms, you're welcome to help out. 
