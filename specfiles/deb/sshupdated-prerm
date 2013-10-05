@@ -1,0 +1,2 @@
+service sshupdated stop
+/usr/sbin/update-rc.d sshupdated remove

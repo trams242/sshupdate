@@ -1,1 +1,2 @@
-etc/sshupdate/config
+etc/init.d/sshupdated
+etc/ssh/sshupdated.conf
