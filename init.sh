@@ -209,7 +209,6 @@ function f_create_client_package_deb {
 }
 
 function f_create_server_package_deb {
-  set -x
   DEB_ROOT=${DEB_ROOT}/${server_service_name}
   # Check if dpkg-deb exists
   [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
