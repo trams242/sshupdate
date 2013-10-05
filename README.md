@@ -37,20 +37,27 @@ How to get started
 Getting started is fairly simple. Please note, that we currently support EL6 so the following assumes you're running on a EL6-host.
 
 1. Download sources
-   Either download the zip: https://github.com/trams242/sshupdate/archive/master.zip
+
+   Either download the zip: https://github.com/trams242/sshupdate/archive/master.zip 
+    
      or
-   If you have git, download via git: git clone https://github.com/trams242/sshupdate.git
+   
+   If you have git, download via git: git clone https://github.com/trams242/sshupdate.git 
 
 2. Enter the source directory and run the command:
+
    On machine with sources: ./init.sh init
 
 3. Install the server RPM
-   On machine with sources: scp <rpm-file-created-from-init.sh> <manager-hostname>:
-   On manager: rpm -ivh <rpm-file-created-from-init.sh>
+
+   On machine with sources: scp &lt;rpm-file-created-from-init.sh> &lt;manager-hostname>:
+   
+   On manager: rpm -ivh &lt;rpm-file-created-from-init.sh>
 
 4. Install the client RPM
-   On machine with sources: scp <rpm-file-created-from-init.sh> <client-hostname>:
-   On client: rpm -ivh <rpm-file-created-from-init.sh>
+   On machine with sources: scp &lt;rpm-file-created-from-init.sh> &lt;client-hostname>:
+   
+   On client: rpm -ivh &lt;rpm-file-created-from-init.sh>
 
 5. Patch for fun and profit
-   On manager: sshupdate patch <client-hostname>
+   On manager: sshupdate patch &lt;client-hostname>
