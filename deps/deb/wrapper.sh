@@ -6,13 +6,16 @@ case "$SSH_ORIGINAL_COMMAND" in
 		/usr/bin/dpkg -l
 		;;
 	"patch")
-		/usr/bin/apt-get update && /usr/bin/apt-get upgrade -y -q
+                export DEBIAN_FRONTEND=noninteractive 
+		/usr/bin/apt-get update && /usr/bin/apt-get upgrade -y -q --force-yes
 		;;
 	"available-updates")
-		echo n | /usr/bin/apt-get upgrade 
+                export DEBIAN_FRONTEND=noninteractive 
+		/usr/bin/apt-get update && echo n | /usr/bin/apt-get upgrade 
 		;;
 	"patch-n-reboot")
-		/usr/bin/apt-get update && /usr/bin/apt-get upgrade -y -q
+                export DEBIAN_FRONTEND=noninteractive 
+		/usr/bin/apt-get update && /usr/bin/apt-get upgrade -y -q --force-yes
                 if [ -f /var/run/reboot-required ] 
                 then
 		  echo "Warning: System will reboot in 1 min" | wall
