@@ -51,6 +51,12 @@ RPM_ROOT=${MYDIR}/RPM-ROOT
 # Where should we build the DEB
 DEB_ROOT=${MYDIR}/DEB-ROOT
 
+# Debian Revision
+DEB_REV=1
+
+# Debian Architechture 
+DEB_ARCH=all
+
 # Where do we find the deps-directory
 deps=${MYDIR}/deps
 
@@ -108,7 +114,12 @@ function print_line {
 function f_query_user {
   while true
   do
-    echo -e "$1 [y/n]"
+    if [ "$2" = "yes_no" ]
+    then
+      echo -e "$1 [y/n]"
+    else
+      echo -e "$1"
+    fi
     echo -n "Answer: "
     read QUERY_ANSWER
     if [ "$2" = "check_file" ] || [ "$2" = "check_dir" ]
@@ -159,55 +170,71 @@ function f_populate_scripts {
 ## Deb functions
 
 function f_create_client_package_deb {
+  DEB_ROOT=${DEB_ROOT}/${client_service_name}
   # Check if dpkg-deb exists
   [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
-  # Create DEB_ROOT/sshupdated/DEBIAN
-  [ -d "${DEB_ROOT}/sshupdated/DEBIAN" ] || mkdir -p ${DEB_ROOT}/sshupdated/DEBIAN
+  # Create DEB-ROOT/sshupdated/DEBIAN
+  [ -d "${DEB_ROOT}/DEBIAN" ] || mkdir -m 755 -p ${DEB_ROOT}/DEBIAN
   # Copy specfiles/deb/sshupdated-control to DEB-ROOT/sshupdated/DEBIAN/control
-  cp ${MYDIR}/specfiles/deb/${client_service_name}-control ${DEB_ROOT}/sshupdated/DEBIAN/control
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-control ${DEB_ROOT}/DEBIAN/control
   # Copy specfiles/deb/sshupdated-conffiles to DEB-ROOT/sshupdated/DEBIAN/conffiles
-  cp ${MYDIR}/specfiles/deb/${client_service_name}-conffiles ${DEB_ROOT}/sshupdated/DEBIAN/conffiles
+  cp ${MYDIR}/specfiles/deb/${client_service_name}-conffiles ${DEB_ROOT}/DEBIAN/conffiles
   # Post install
-  cp -p ${MYDIR}/specfiles/deb/${client_service_name}-postinst ${DEB_ROOT}/sshupdated/DEBIAN/postinst
+  cp -p ${MYDIR}/specfiles/deb/${client_service_name}-postinst ${DEB_ROOT}/DEBIAN/postinst
   # Pre rm
-  cp -p ${MYDIR}/specfiles/deb/${client_service_name}-prerm ${DEB_ROOT}/sshupdated/DEBIAN/prerm
+  cp -p ${MYDIR}/specfiles/deb/${client_service_name}-prerm ${DEB_ROOT}/DEBIAN/prerm
   # Create a working fakeroot/filestructure with files you want
-  [ -d "${DEB_ROOT}/sshupdated/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/sbin 
-  [ -d "${DEB_ROOT}/sshupdated/etc/init.d" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/init.d
-  [ -d "${DEB_ROOT}/sshupdated/etc/ssh" ] || mkdir -p ${DEB_ROOT}/sshupdated/etc/ssh
-  [ -d "${DEB_ROOT}/sshupdated/usr/share/sshupdated" ] || mkdir -p ${DEB_ROOT}/sshupdated/usr/share/sshupdated
-  [ -f "${deps}/common/sshd_config" ] && cp ${deps}/common/sshd_config ${DEB_ROOT}/sshupdated/etc/ssh/${client_service_name}.conf
-  [ -f "${deps}/deb/startscript" ] && cp ${deps}/deb/startscript ${DEB_ROOT}/sshupdated/etc/init.d/${client_service_name}
-  [ -f "${deps}/deb/wrapper.sh" ] && cp ${deps}/deb/wrapper.sh ${DEB_ROOT}/sshupdated/usr/share/sshupdated/wrapper.sh
-  # If people want to include keys, fix this
-  #[ -d "${DEB_ROOT}/sshupdate/root/.ssh" ] || mkdir -p ${DEB_ROOT}/sshupdate/root/.ssh
-  #/root/.ssh/sshupdated_keys
+  [ -d "${DEB_ROOT}/etc/init.d" ] || mkdir -p ${DEB_ROOT}//etc/init.d
+  [ -d "${DEB_ROOT}/etc/ssh" ] || mkdir -p ${DEB_ROOT}/etc/ssh
+  [ -d "${DEB_ROOT}/usr/share/${client_service_name}" ] || mkdir -p ${DEB_ROOT}/usr/share/${client_service_name}
+  [ -f "${deps}/common/sshd_config" ] && cp ${deps}/common/sshd_config ${DEB_ROOT}/etc/ssh/${client_service_name}.conf
+  [ -f "${deps}/deb/startscript" ] && cp ${deps}/deb/startscript ${DEB_ROOT}/etc/init.d/${client_service_name}
+  [ -f "${deps}/deb/wrapper.sh" ] && cp ${deps}/deb/wrapper.sh ${DEB_ROOT}/usr/share/${client_service_name}/wrapper.sh
+  [ -d "${DEB_ROOT}/root/.ssh" ] || mkdir -p ${DEB_ROOT}/root/.ssh
+  if [ -f "${MYDIR}/keys/${client_service_name}.pub" ]
+  then
+    for key in $keys; do
+      tmpkey=`cat ${MYDIR}/keys/${key}.pub`
+      echo "command=\"/usr/share/${client_service_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${DEB_ROOT}/root/.ssh/${client_service_name}_keys
+    done
+  fi
   # Create Deb
-  dpkg-deb --build DEB-ROOT/sshupdated
+  dpkg-deb --build ${DEB_ROOT}
+  # Move deb-file and change its name
+  mv ${DEB_ROOT}.deb ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
+  # Remove dir
+  rm -rf ${DEB_ROOT}
   # Show where deb is located DEB-ROOT/sshupdated.deb
-  print_line "The new deb-package is found here: ${DEB_ROOT}/sshupdated.deb\n"
+  print_line "The new deb-package is found here: ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
 }
 
 function f_create_server_package_deb {
+  set -x
+  DEB_ROOT=${DEB_ROOT}/${server_service_name}
   # Check if dpkg-deb exists
   [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
-  # Create DEB_ROOT/sshupdate/DEBIAN
-  [ -d "${DEB_ROOT}/sshupdate/DEBIAN" ] || mkdir -p ${DEB_ROOT}/sshupdate/DEBIAN
+  # Create DEB_ROOT/${server_service_name}/DEBIAN
+  [ -d "${DEB_ROOT}/DEBIAN" ] || mkdir -m 755 -p ${DEB_ROOT}/DEBIAN
   # Copy specfiles/deb/sshupdate-control to DEB-ROOT/sshupdate/DEBIAN/control
-  cp ${MYDIR}/specfiles/deb/${server_service_name}-control ${DEB_ROOT}/sshupdate/DEBIAN/control
+  cp ${MYDIR}/specfiles/deb/${server_service_name}-control ${DEB_ROOT}/DEBIAN/control
   # Copy specfiles/deb/sshupdate-conffiles to DEB-ROOT/sshupdate/DEBIAN/conffiles
-  cp ${MYDIR}/specfiles/deb/${server_service_name}-conffiles ${DEB_ROOT}/sshupdate/DEBIAN/conffiles
+  cp ${MYDIR}/specfiles/deb/${server_service_name}-conffiles ${DEB_ROOT}/DEBIAN/conffiles
   # Create a working fakeroot/filestructure with files you want
   # Install config-file
-  [ -d "${DEB_ROOT}/sshupdate/etc/sshupdate" ] || mkdir -p ${DEB_ROOT}/sshupdate/etc/sshupdate 
-  [ -f "${DEB_ROOT}/sshupdate/etc/sshupdate/config" ] || touch ${DEB_ROOT}/sshupdate/etc/sshupdate/config
+  [ -d "${DEB_ROOT}/etc/${server_service_name}" ] || mkdir -p ${DEB_ROOT}/etc/${server_service_name} 
+  [ -f "${DEB_ROOT}/etc/${server_service_name}/config" ] || touch ${DEB_ROOT}/etc/${server_service_name}/config
   # Insert sshupdate-script
-  [ -d "${DEB_ROOT}/sshupdate/usr/sbin" ] || mkdir -p ${DEB_ROOT}/sshupdate/usr/sbin 
-  [ -f "${deps}/common/sshupdate" ] && cp ${deps}/common/sshupdate ${DEB_ROOT}/sshupdate/usr/sbin/
+  [ -d "${DEB_ROOT}/usr/sbin" ] || mkdir -p ${DEB_ROOT}/usr/sbin 
+  [ -f "${deps}/common/${server_service_name}" ] && cp ${deps}/common/${server_service_name} ${DEB_ROOT}/usr/sbin/
   # Create Deb
-  dpkg-deb --build DEB-ROOT/sshupdate
-  # Show where deb is located DEB-ROOT/sshupdate.deb
-  print_line "The new deb-package is found here: ${DEB_ROOT}/sshupdate.deb\n"
+  dpkg-deb --build DEB-ROOT/${server_service_name}
+  # Move deb-file and change its name
+  mv ${DEB_ROOT}.deb ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
+  # If people want to include keys, fix this
+  # Remove dir
+  rm -rf ${DEB_ROOT}
+  # Show where deb is located DEB-ROOT/${server_service_name}.deb
+  print_line "The new deb-package is found here: ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
 }
 
 ## EL6 functions
@@ -237,20 +264,20 @@ function f_create_sshd_startscripts_el6 {
 }
 
 function f_gen_gpg_signing_keys {
-	# WARNING This is painfully slow on virtual machines.
-	if [ ! -d "$MYDIR/keys/gpg" ]; then
-		mkdir -p $MYDIR/keys/gpg
-	fi
-	if [ -f "$MYDIR/keys/gpg/$GPG_PUBRING.sec" -a -f "$MYDIR/keys/gpg/$GPG_SECRING.pub" ]; then
-		echo "GPG keys already generated. skipping."
-	else
-		echo "Creating GPG signing keys." 
-		echo "This is painfully slow on virtual machines due to low entropy."
-		echo "See gpg.txt for alternatives."
-		printf "Generate pgpkeys for signing?(y/N): "
-		read ANSWER
-		if [[ "$ANSWER" =~ 'y|Y|Yes|yes|YES' ]]; then
-			gpg --batch --gen-key<<EOF
+  # WARNING This is painfully slow on virtual machines.
+  if [ ! -d "$MYDIR/keys/gpg" ]; then
+    mkdir -p $MYDIR/keys/gpg
+  fi
+  if [ -f "$MYDIR/keys/gpg/$GPG_PUBRING.sec" -a -f "$MYDIR/keys/gpg/$GPG_SECRING.pub" ]; then
+    echo "GPG keys already generated. skipping."
+  else
+    echo "Creating GPG signing keys." 
+    echo "This is painfully slow on virtual machines due to low entropy."
+    echo "See gpg.txt for alternatives."
+    printf "Generate pgpkeys for signing?(y/N): "
+    read ANSWER
+    if [[ "$ANSWER" =~ 'y|Y|Yes|yes|YES' ]]; then
+      gpg --batch --gen-key<<EOF
 %echo Generating a pgp keys for signing packages. 
 %echo Don't worry. you can re-sign it later if you wish.
 Key-Type: $GPG_KEY
@@ -267,28 +294,27 @@ Name-Comment: $GPG_COMMENT
 %commit 
 %echo done creating keys
 EOF
-		else
-			echo "skipping gpg key generation. See gpg.txt for alternatives"
-		fi
-	fi
+    else
+      echo "skipping gpg key generation. See gpg.txt for alternatives"
+    fi
+  fi
 }
 
 function f_sign_rpm {
-	# check for sane rpm macros.
-	echo "Checking for proper entries in ~/.rpmmacros"
-	egrep '%_signature gpg' ~/.rpmmacros > /dev/null
-	if [ $? -eq 1 ]; then
-		echo "%_signature gpg" >> ~/.rpmmacros
-		echo "%_gpg_name sshupdate" >> ~/.rpmmacros
-		echo "%_gpg_path ~/sshupdate/keys/gpg"
-	else
-		echo "Already have %_signature gpg present in ~/.rpmmacros. "
-		echo "assuming happily that all stuff there is correct"
-	
-	fi
-	rpm --addsign $1 
-	echo "if you wish to resign this package with another key, simply use the"
-	echo "\"rpm --addsign\" command."
+  # check for sane rpm macros.
+  echo "Checking for proper entries in ~/.rpmmacros"
+  egrep '%_signature gpg' ~/.rpmmacros > /dev/null
+  if [ $? -eq 1 ]; then
+    echo "%_signature gpg" >> ~/.rpmmacros
+    echo "%_gpg_name sshupdate" >> ~/.rpmmacros
+    echo "%_gpg_path ~/sshupdate/keys/gpg"
+  else
+    echo "Already have %_signature gpg present in ~/.rpmmacros. "
+    echo "assuming happily that all stuff there is correct"
+  fi
+  rpm --addsign $1 
+  echo "if you wish to resign this package with another key, simply use the"
+  echo "\"rpm --addsign\" command."
 }
 
 
@@ -368,16 +394,16 @@ function f_help {
 PROG=$(basename $0)
   cat << EOF
 $PROG options:
-	$PROG gen-keys - Generate ssh-keys
-	$PROG build-deb - Create deb's
-	$PROG build-client-deb - Create client deb
-	$PROG build-server-deb - Create server deb
-	$PROG build-rpm - Create rpm's
-	$PROG build-client-rpm - Create client rpm
-	$PROG build-server-rpm - Create server rpm
-	$PROG clean - Clean failed build
-	$PROG init - Run gen-keys, then build-rpm
-	$PROG sign-client-rpm - Sign the rpm with a gpg-key. see gpg.txt
+  $PROG gen-keys - Generate ssh-keys
+  $PROG build-deb - Create deb's
+  $PROG build-client-deb - Create client deb
+  $PROG build-server-deb - Create server deb
+  $PROG build-rpm - Create rpm's
+  $PROG build-client-rpm - Create client rpm
+  $PROG build-server-rpm - Create server rpm
+  $PROG clean - Clean failed build
+  $PROG init - Run gen-keys, then build-rpm
+  $PROG sign-client-rpm - Sign the rpm with a gpg-key. see gpg.txt
 
 Note: $PROG uses relative paths.
 EOF
