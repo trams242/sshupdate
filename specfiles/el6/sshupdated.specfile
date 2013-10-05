@@ -23,8 +23,8 @@ Group:     %{group}
 Source0:   %{source}
 BuildArch: noarch
 Requires:  openssh-server
-Requires(post): policycoreutils, initscripts
-Requires(preun): policycoreutils, initscripts
+Requires(post): policycoreutils, policycoreutils-python, initscripts
+Requires(preun): policycoreutils, policycoreutils-python, initscripts
 Requires(postun): policycoreutils
 Provides:  %{name}
 URL:       %{url}
@@ -51,12 +51,14 @@ tar cf - . | (cd %{buildroot}%{_prefix}/; tar xfp -)
 %pre
 
 %post
+semanage port -a -t ssh_port_t -p tcp 2222
 /sbin/chkconfig --add /etc/init.d/sshupdated
 service sshupdated start
 
 %preun
 service sshupdated stop
 /sbin/chkconfig --del /etc/init.d/sshupdated
+semanage port -d -t ssh_port_t -p tcp 2222
 
 %clean
 rm -rf %{buildroot}
