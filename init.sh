@@ -163,8 +163,6 @@ function f_populate_scripts {
   [ -d "${RPM_ROOT}/usr/sbin" ] || mkdir -p ${RPM_ROOT}/usr/sbin
   # Install wrapper.sh
   [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${client_service_name}
-  # Install sshupdate
-  [ -f "${deps}/common/sshupdate" ] && mkdir -p ${RPM_ROOT}/usr/sbin && cp ${deps}/common/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
 }
 
 ## Deb functions
