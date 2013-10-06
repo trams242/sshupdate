@@ -171,6 +171,8 @@ function f_populate_scripts {
 
 function f_create_client_package_deb {
   DEB_ROOT=${DEB_ROOT}/${client_service_name}
+  rm -rf ${DEB_ROOT}
+  [ -d ${DEB_ROOT} ] || mkdir -p ${DEB_ROOT}
   # Check if dpkg-deb exists
   [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
   # Create DEB-ROOT/sshupdated/DEBIAN
@@ -201,15 +203,18 @@ function f_create_client_package_deb {
   # Create Deb
   dpkg-deb --build ${DEB_ROOT}
   # Move deb-file and change its name
-  mv ${DEB_ROOT}.deb ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  mv ${DEB_ROOT}.deb ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
   # Remove dir
   rm -rf ${DEB_ROOT}
   # Show where deb is located DEB-ROOT/sshupdated.deb
-  print_line "The new deb-package is found here: ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
+  print_line "The new deb-package is found here: ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
 }
 
 function f_create_server_package_deb {
   DEB_ROOT=${DEB_ROOT}/${server_service_name}
+  rm -rf ${DEB_ROOT}
+  [ -d ${DEB_ROOT} ] || mkdir -p ${DEB_ROOT}
   # Check if dpkg-deb exists
   [ -f "/usr/bin/dpkg-deb" ] || ( echo "No dpkg-deb existing, please install it so we can create deb's for you" ; exit 1 )
   # Create DEB_ROOT/${server_service_name}/DEBIAN
@@ -228,12 +233,13 @@ function f_create_server_package_deb {
   # Create Deb
   dpkg-deb --build DEB-ROOT/${server_service_name}
   # Move deb-file and change its name
-  mv ${DEB_ROOT}.deb ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  mv ${DEB_ROOT}.deb ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
   # If people want to include keys, fix this
   # Remove dir
   rm -rf ${DEB_ROOT}
   # Show where deb is located DEB-ROOT/${server_service_name}.deb
-  print_line "The new deb-package is found here: ${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
+  print_line "The new deb-package is found here: ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
 }
 
 ## EL6 functions
@@ -341,7 +347,16 @@ function f_build_server_rpm_el6  {
   fi
   rpmbuild -bb ${MYDIR}/specfiles/el6/${server_service_name}.specfile --define "_topdir ${MYDIR}/rpmbuild/server" > /dev/null 2>&1
   print_success $?
-  echo -e "Server RPM available in: ${MYDIR}/rpmbuild/server/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm"
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  if [ -f ${MYDIR}/rpmbuild/server/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ]
+  then
+    mv ${MYDIR}/rpmbuild/server/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${server_service_name}-${version}-1.noarch.rpm
+    rm -rf ${RPM_ROOT} ${MYDIR}/tmp ${MYDIR}/rpmbuild
+    echo -e "Server RPM available in: ${MYDIR}/packages/${server_service_name}-${version}-1.noarch.rpm"
+  else
+    echo -e "Build failed, saving ${RPM_ROOT}. Will remove when starting next build."
+    exit 1
+  fi
 }
 
 function f_build_client_rpm_el6  {
@@ -359,7 +374,16 @@ function f_build_client_rpm_el6  {
   fi
   rpmbuild -bb ${MYDIR}/specfiles/el6/${client_service_name}.specfile --define "_topdir ${MYDIR}/rpmbuild/client" > /dev/null 2>&1
   print_success $?
-  echo -e "Client RPM available in: ${MYDIR}/rpmbuild/client/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm"
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  if [ -f ${MYDIR}/rpmbuild/client/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ]
+  then
+    mv ${MYDIR}/rpmbuild/client/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${client_service_name}-${version}-1.noarch.rpm
+    rm -rf ${RPM_ROOT} ${MYDIR}/tmp ${MYDIR}/rpmbuild
+    echo -e "Client RPM available in: ${MYDIR}/packages/${client_service_name}-${version}-1.noarch.rpm"
+  else
+    echo -e "Build failed, saving ${RPM_ROOT}. Will remove when starting next build."
+    exit 1
+  fi
 }
 
 function f_create_sshupdate_filestructure_el6 {
@@ -485,12 +509,12 @@ $PROG options:
   $PROG build-deb - Create packages for deb
   $PROG build-client-deb - Create client package for deb
   $PROG build-server-deb - Create server package for deb
-  $PROG build-rpm - Create packages for el6/fedora
-  $PROG build-client-rpm - Create client package for el6/fedora
-  $PROG build-server-rpm - Create server package for el6/fedora
+  $PROG build-el6 - Create packages for el6/fedora
+  $PROG build-client-el6 - Create client package for el6/fedora
+  $PROG build-server-el6 - Create server package for el6/fedora
   $PROG build-suse - Create packages for suse
   $PROG build-client-suse - Create client package for suse
-  $PROG build-server-rpm - Create server package for suse
+  $PROG build-server-suse - Create server package for suse
   $PROG clean - Clean failed build
   $PROG init - Run gen-keys, then build-rpm
   $PROG sign-client-rpm - Sign the rpm with a gpg-key. see gpg.txt
@@ -526,17 +550,17 @@ case "$1" in
   build-server-deb)
     f_create_server_package_deb
   ;;
-  build-rpm)
+  build-el6)
     f_create_client_package_el6
     f_create_server_package_el6
   ;;
-  build-client-rpm)
+  build-client-el6)
     f_create_client_package_el6
   ;;
   sign-client-rpm)
     f_sign_rpm ~/sshupdate/rpmbuild/client/RPMS/noarch/sshupdated-0.1-1.noarch.rpm
   ;;
-  build-server-rpm)
+  build-server-el6)
     f_create_server_package_el6
   ;;
   build-suse)
