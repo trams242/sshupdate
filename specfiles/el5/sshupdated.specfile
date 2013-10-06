@@ -7,7 +7,7 @@
 %define release   1
 %define license   BSD License
 %define group     Networking/WWW
-%define source    %{name}-%{version}.tar.gz
+%define source    %{name}-%version.tar.gz
 %define url       https://github.com/trams242/sshupdate
 %define vendor    sshupdate
 %define packager  sshupdate packaging team
@@ -23,11 +23,10 @@ License:   %{license}
 Group:     %{group}
 Source0:   %{source}
 BuildArch: noarch
-Requires:  openssh
-Requires(post): bash
-Requires(preun): bash
-Requires(pre): %insserv_prereq %fillup_prereq bash
-Requires(postun): bash
+Requires:  openssh-server
+Requires(post): policycoreutils, initscripts
+Requires(preun): policycoreutils, initscripts
+Requires(postun): policycoreutils
 Provides:  %{name}
 URL:       %{url}
 Buildroot: %{buildroot}
@@ -47,27 +46,26 @@ https://github.com/trams242/sshupdate
 
 %install
 install -d %{buildroot}%{_prefix}/
-install -D -m 755 etc/init.d/sshupdated %{buildroot}%{_initrddir}/sshupdated
 
 tar cf - . | (cd %{buildroot}%{_prefix}/; tar xfp -)
 
 %pre
 
 %post
-%fillup_and_insserv sshupdated
+semanage port -a -t ssh_port_t -p tcp 2222
+/sbin/chkconfig --add /etc/init.d/sshupdated
+service sshupdated start
 
 %preun
-%stop_on_removal sshupdated
-
-%postun
-%restart_on_update sshupdated
-%insserv_cleanup
+service sshupdated stop
+/sbin/chkconfig --del /etc/init.d/sshupdated
+semanage port -d -t ssh_port_t -p tcp 2222
 
 %clean
 rm -rf %{buildroot}
 
 %files
-%attr(0755, root, root) /etc/init.d/sshupdated
+%attr(0755, root, root) /etc/rc.d/init.d/sshupdated
 %attr(0600, root, root) /etc/ssh/sshupdated.conf
 %attr(0600, root, root) /root/.ssh/sshupdated_keys
 %attr(0700, root, root) /usr/share/sshupdated/wrapper.sh

@@ -204,11 +204,11 @@ function f_create_client_package_deb {
   dpkg-deb --build ${DEB_ROOT}
   # Move deb-file and change its name
   [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
-  mv ${DEB_ROOT}.deb ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
+  mv ${DEB_ROOT}.deb ${MYDIR}/packages/${client_service_name}_${version}-${DEB_REV}_${DEB_ARCH}.deb
   # Remove dir
   rm -rf ${DEB_ROOT}
   # Show where deb is located DEB-ROOT/sshupdated.deb
-  print_line "The new deb-package is found here: ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
+  print_line "The new deb-package is found here: ${MYDIR}/packages/${client_service_name}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
 }
 
 function f_create_server_package_deb {
@@ -234,12 +234,12 @@ function f_create_server_package_deb {
   dpkg-deb --build DEB-ROOT/${server_service_name}
   # Move deb-file and change its name
   [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
-  mv ${DEB_ROOT}.deb ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb
+  mv ${DEB_ROOT}.deb ${MYDIR}/packages/${server_service_name}_${version}-${DEB_REV}_${DEB_ARCH}.deb
   # If people want to include keys, fix this
   # Remove dir
   rm -rf ${DEB_ROOT}
   # Show where deb is located DEB-ROOT/${server_service_name}.deb
-  print_line "The new deb-package is found here: ${MYDIR}/packages/${DEB_ROOT}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
+  print_line "The new deb-package is found here: ${MYDIR}/packages/${server_service_name}_${version}-${DEB_REV}_${DEB_ARCH}.deb\n"
 }
 
 ## EL6 functions
@@ -350,9 +350,9 @@ function f_build_server_rpm_el6  {
   [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
   if [ -f ${MYDIR}/rpmbuild/server/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ]
   then
-    mv ${MYDIR}/rpmbuild/server/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${server_service_name}-${version}-1.noarch.rpm
+    mv ${MYDIR}/rpmbuild/server/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${server_service_name}-${version}-1.el6.noarch.rpm
     rm -rf ${RPM_ROOT} ${MYDIR}/tmp ${MYDIR}/rpmbuild
-    echo -e "Server RPM available in: ${MYDIR}/packages/${server_service_name}-${version}-1.noarch.rpm"
+    echo -e "Server RPM available in: ${MYDIR}/packages/${server_service_name}-${version}-1.el6.noarch.rpm"
   else
     echo -e "Build failed, saving ${RPM_ROOT}. Will remove when starting next build."
     exit 1
@@ -377,9 +377,9 @@ function f_build_client_rpm_el6  {
   [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
   if [ -f ${MYDIR}/rpmbuild/client/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ]
   then
-    mv ${MYDIR}/rpmbuild/client/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${client_service_name}-${version}-1.noarch.rpm
+    mv ${MYDIR}/rpmbuild/client/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${client_service_name}-${version}-1.el6.noarch.rpm
     rm -rf ${RPM_ROOT} ${MYDIR}/tmp ${MYDIR}/rpmbuild
-    echo -e "Client RPM available in: ${MYDIR}/packages/${client_service_name}-${version}-1.noarch.rpm"
+    echo -e "Client RPM available in: ${MYDIR}/packages/${client_service_name}-${version}-1.el6.noarch.rpm"
   else
     echo -e "Build failed, saving ${RPM_ROOT}. Will remove when starting next build."
     exit 1
@@ -411,6 +411,92 @@ function f_create_client_package_el6 {
   f_populate_scripts 
   f_create_sshd_authkeys_el6
   f_build_client_rpm_el6 ${pkgs}/${client_service_name}-el6/${client_service_name}.spec
+}
+
+## EL5
+function f_create_client_package_el5 {
+  RPM_ROOT=${RPM_ROOT}/${client_service_name}
+  rm -rf ${RPM_ROOT}
+  [ -d ${RPM_ROOT} ] || mkdir -p ${RPM_ROOT}
+  [ -d /var/tmp/${client_service_name}-root ] && rm -rf /var/tmp/${client_service_name}-root
+  # Make sure common-files exist
+  [ -d ${RPM_ROOT}/etc/ssh ] || mkdir -p ${RPM_ROOT}/etc/ssh
+  [ -f ${deps}/common/sshd_config ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/common/sshd_config > ${RPM_ROOT}/etc/ssh/${client_service_name}.conf
+  # Make sure dist-specific files exist
+  [ -d "${RPM_ROOT}/etc/rc.d/init.d" ] || mkdir -p ${RPM_ROOT}/etc/rc.d/init.d
+  [ -f "${deps}/el5/startscript" ] && cp ${deps}/el5/startscript ${RPM_ROOT}/etc/rc.d/init.d/${client_service_name}
+  [ -d "${RPM_ROOT}/usr/share/${client_service_name}" ] || mkdir -p ${RPM_ROOT}/usr/share/${client_service_name}
+  [ -f "${deps}/el5/wrapper.sh" ] && cp ${deps}/el5/wrapper.sh ${RPM_ROOT}/usr/share/${client_service_name}
+  [ -d "${RPM_ROOT}/root/.ssh" ] || mkdir -p ${RPM_ROOT}/root/.ssh
+  if [ -f "${MYDIR}/keys/${client_service_name}.pub" ]
+  then
+    for key in $keys; do
+      tmpkey=`cat ${MYDIR}/keys/${key}.pub`
+      echo "command=\"/usr/share/${client_service_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${RPM_ROOT}/root/.ssh/${client_service_name}_keys
+    done
+  fi
+  # Create the actual RPM
+  mkdir -p ${RPM_ROOT}/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  mkdir -p ${RPM_ROOT}/${client_service_name}-${version}
+  cd ${RPM_ROOT}
+  for i in $(ls | grep -v ${client_service_name}-${version}) ; do mv $i ${RPM_ROOT}/${client_service_name}-${version}/ ; done
+  tar zcf ${RPM_ROOT}/${client_service_name}-${version}/SOURCES/${client_service_name}-${version}.tar.gz .
+  print_line "\nBuilding RPM based on scripts:"
+  if [ ! -f $RPMBUILD ]; then
+    echo "No rpmbuild installed. exiting. ($RPMBUILD)"
+    echo "try yum install rpm-build"
+    exit 1
+  fi
+  rpmbuild -bb ${MYDIR}/specfiles/el5/${client_service_name}.specfile --define "_topdir ${RPM_ROOT}/${client_service_name}-${version}" > /dev/null 2>&1
+  print_success $?
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  if [ -f ${RPM_ROOT}/${client_service_name}-${version}/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ]
+  then
+    mv ${RPM_ROOT}/${client_service_name}-${version}/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${client_service_name}-${version}-1.el5.noarch.rpm
+    rm -rf ${RPM_ROOT}
+    echo -e "Client RPM available in: ${MYDIR}/packages/${client_service_name}-${version}-1.el5.noarch.rpm"
+  else
+    echo -e "Build failed, saving ${RPM_ROOT}. Will remove when starting next build."
+    exit 1
+  fi
+}
+
+function f_create_server_package_el5 {
+  RPM_ROOT=${RPM_ROOT}/${server_service_name}
+  rm -rf ${RPM_ROOT}
+  [ -d ${RPM_ROOT} ] || mkdir -p ${RPM_ROOT}
+  [ -d /var/tmp/${server_service_name}-root ] && rm -rf /var/tmp/${server_service_name}-root
+  # Create directories
+  [ -d "${RPM_ROOT}/etc/sshupdate" ] || mkdir -p ${RPM_ROOT}/etc/sshupdate
+  [ -d "${RPM_ROOT}/usr/sbin" ] || mkdir -p ${RPM_ROOT}/usr/sbin
+  # Install sshupdate
+  [ -f "${deps}/common/sshupdate" ] && cp ${deps}/common/sshupdate ${RPM_ROOT}/usr/sbin/sshupdate
+  # Just a placeholder, empty config-file
+  [ -f "${RPM_ROOT}/etc/sshupdate/config" ] || touch ${RPM_ROOT}/etc/sshupdate/config
+  # Create the actual RPM
+  mkdir -p ${RPM_ROOT}/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  mkdir -p ${RPM_ROOT}/${server_service_name}-${version}
+  cd ${RPM_ROOT}
+  for i in $(ls | grep -v ${server_service_name}-${version}) ; do mv $i ${RPM_ROOT}/${server_service_name}-${version}/ ; done
+  tar zcf ${RPM_ROOT}/${server_service_name}-${version}/SOURCES/${server_service_name}-${version}.tar.gz .
+  print_line "\nBuilding RPM based on scripts:"
+  if [ ! -f $RPMBUILD ]; then
+    echo "No rpmbuild installed. exiting. ($RPMBUILD)"
+    echo "try yum install rpm-build"
+    exit 1
+  fi
+  rpmbuild -bb ${MYDIR}/specfiles/el5/${server_service_name}.specfile --define "_topdir ${RPM_ROOT}/${server_service_name}-${version}" > /dev/null 2>&1
+  print_success $?
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  if [ -f ${RPM_ROOT}/${server_service_name}-${version}/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ]
+  then
+    mv ${RPM_ROOT}/${server_service_name}-${version}/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${server_service_name}-${version}-1.el5.noarch.rpm
+    rm -rf ${RPM_ROOT}
+    echo -e "Server RPM available in: ${MYDIR}/packages/${server_service_name}-${version}-1.el5.noarch.rpm"
+  else
+    echo -e "Build failed, saving ${RPM_ROOT}. Will remove when starting next build."
+    exit 1
+  fi 
 }
 
 ## Suse functions
@@ -452,9 +538,9 @@ function f_create_client_package_suse {
   [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
   if [ -f ${SUSE_ROOT}/${client_service_name}-${version}/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ]
   then
-    mv ${SUSE_ROOT}/${client_service_name}-${version}/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages
+    mv ${SUSE_ROOT}/${client_service_name}-${version}/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${client_service_name}-${version}-1.suse.noarch.rpm
     rm -rf ${SUSE_ROOT}
-    echo -e "Client RPM available in: ${MYDIR}/packages/${client_service_name}-${version}-1.noarch.rpm"
+    echo -e "Client RPM available in: ${MYDIR}/packages/${client_service_name}-${version}-1.suse.noarch.rpm"
   else
     echo -e "Build failed, saving ${SUSE_ROOT}. Will remove when starting next build."
     exit 1
@@ -490,9 +576,9 @@ function f_create_server_package_suse {
   [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
   if [ -f ${SUSE_ROOT}/${server_service_name}-${version}/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ]
   then
-    mv ${SUSE_ROOT}/${server_service_name}-${version}/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages
+    mv ${SUSE_ROOT}/${server_service_name}-${version}/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages/${server_service_name}-${version}-1.suse.noarch.rpm
     rm -rf ${SUSE_ROOT}
-    echo -e "Server RPM available in: ${MYDIR}/packages/${server_service_name}-${version}-1.noarch.rpm"
+    echo -e "Server RPM available in: ${MYDIR}/packages/${server_service_name}-${version}-1.suse.noarch.rpm"
   else
     echo -e "Build failed, saving ${SUSE_ROOT}. Will remove when starting next build."
     exit 1
@@ -509,6 +595,9 @@ $PROG options:
   $PROG build-deb - Create packages for deb
   $PROG build-client-deb - Create client package for deb
   $PROG build-server-deb - Create server package for deb
+  $PROG build-el5 - Create packages for el5
+  $PROG build-client-el5 - Create client package for el5/fedora
+  $PROG build-server-el5 - Create server package for el5/fedora
   $PROG build-el6 - Create packages for el6/fedora
   $PROG build-client-el6 - Create client package for el6/fedora
   $PROG build-server-el6 - Create server package for el6/fedora
@@ -557,11 +646,21 @@ case "$1" in
   build-client-el6)
     f_create_client_package_el6
   ;;
-  sign-client-rpm)
-    f_sign_rpm ~/sshupdate/rpmbuild/client/RPMS/noarch/sshupdated-0.1-1.noarch.rpm
-  ;;
   build-server-el6)
     f_create_server_package_el6
+  ;;
+  build-el5)
+    f_create_client_package_el5
+    f_create_server_package_el5
+  ;;
+  build-client-el5)
+    f_create_client_package_el5
+  ;;
+  build-server-el5)
+    f_create_server_package_el5
+  ;;
+  sign-client-rpm)
+    f_sign_rpm ~/sshupdate/rpmbuild/client/RPMS/noarch/sshupdated-0.1-1.noarch.rpm
   ;;
   build-suse)
     f_create_client_package_suse

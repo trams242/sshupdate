@@ -13,6 +13,7 @@
 %define packager  sshupdate packaging team
 %define buildroot %{_tmppath}/%{name}-root
 %define _prefix   /
+%define _unpackaged_files_terminate_build 0
 
 Name:      %{name}
 Summary:   %{summary}
@@ -67,5 +68,4 @@ rm -rf %{buildroot}
 %attr(0755, root, root) /etc/rc.d/init.d/sshupdated
 %attr(0600, root, root) /etc/ssh/sshupdated.conf
 %attr(0600, root, root) /root/.ssh/sshupdated_keys
-%attr(0700, root, root) /usr/share/sshupdated
 %attr(0700, root, root) /usr/share/sshupdated/wrapper.sh
