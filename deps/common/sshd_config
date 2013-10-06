@@ -14,7 +14,7 @@ LoginGraceTime 2m
 PermitRootLogin forced-commands-only
 StrictModes yes
 MaxAuthTries 6
-MaxSessions 10
+#MaxSessions 10
 RSAAuthentication no
 PubkeyAuthentication yes
 AuthorizedKeysFile	.ssh/sshupdated_keys
@@ -27,7 +27,7 @@ ChallengeResponseAuthentication no
 KerberosAuthentication no
 GSSAPIAuthentication no
 UsePAM yes
-AllowAgentForwarding no
+#AllowAgentForwarding no
 AllowTcpForwarding no
 GatewayPorts no
 X11Forwarding no

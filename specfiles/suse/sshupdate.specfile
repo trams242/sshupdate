@@ -13,6 +13,7 @@
 %define packager  sshupdate packaging team
 %define buildroot %{_tmppath}/%{name}-root
 %define _prefix   /
+%define _unpackaged_files_terminate_build 0
 
 Name:      %{name}
 Summary:   %{summary}
