@@ -1,0 +1,69 @@
+# No debuginfo:
+%define debug_package %{nil}
+
+%define name      sshupdate
+%define summary   scripts and commands for patching over ssh
+%define version   0.1
+%define release   1
+%define license   BSD License
+%define group     Networking/WWW
+%define source    %{name}-%version.tar.gz
+%define url       https://github.com/trams242/sshupdate
+%define vendor    sshupdate
+%define packager  sshupdate packaging team
+%define buildroot %{_tmppath}/%{name}-root
+%define _prefix   /
+
+Name:      %{name}
+Summary:   %{summary}
+Version:   %{version}
+Release:   %{release}
+License:   %{license}
+Group:     %{group}
+Source0:   %{source}
+BuildArch: noarch
+Requires:  openssh
+Requires(post): bash
+Requires(preun): bash
+Requires(postun): bash
+Provides:  %{name}
+URL:       %{url}
+Buildroot: %{buildroot}
+
+%description
+This package contains startscripts and public keys for
+centralized patching over sshd.
+
+Please note, this is the package that is intended
+to be installed on your server. 
+
+If you're looking for the daemon that runs on each
+client, please look at the sshupdated package.
+
+For further information, see the documentation at:
+https://github.com/trams242/sshupdate
+
+%prep
+
+%setup
+
+%build
+
+%install
+install -d %{buildroot}%{_prefix}/
+
+tar cf - . | (cd %{buildroot}%{_prefix}/; tar xfp -)
+
+%pre
+
+%post
+
+%postun
+
+%clean
+rm -rf %{buildroot}
+
+%files
+%attr(0755, root, root) /etc/sshupdate
+%attr(0744, root, root) /etc/sshupdate/config
+%attr(0700, root, root) /usr/sbin/sshupdate

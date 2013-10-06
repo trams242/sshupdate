@@ -57,6 +57,9 @@ DEB_REV=1
 # Debian Architechture 
 DEB_ARCH=all
 
+# Where should we build the DEB
+SUSE_ROOT=${MYDIR}/SUSE-ROOT
+
 # Where do we find the deps-directory
 deps=${MYDIR}/deps
 
@@ -160,7 +163,6 @@ function f_genkeys {
 function f_populate_scripts {
   # Make sure directory exists
   [ -d "${RPM_ROOT}/usr/share/${client_service_name}" ] || mkdir -p ${RPM_ROOT}/usr/share/${client_service_name}
-  [ -d "${RPM_ROOT}/usr/sbin" ] || mkdir -p ${RPM_ROOT}/usr/sbin
   # Install wrapper.sh
   [ -f "${deps}/el6/wrapper.sh" ] && cp ${deps}/el6/wrapper.sh ${RPM_ROOT}/usr/share/${client_service_name}
 }
@@ -387,17 +389,108 @@ function f_create_client_package_el6 {
   f_build_client_rpm_el6 ${pkgs}/${client_service_name}-el6/${client_service_name}.spec
 }
 
+## Suse functions
+function f_create_client_package_suse {
+  SUSE_ROOT=${SUSE_ROOT}/${client_service_name}
+  rm -rf ${SUSE_ROOT}
+  [ -d ${SUSE_ROOT} ] || mkdir -p ${SUSE_ROOT}
+  [ -d /var/tmp/${client_service_name}-root ] && rm -rf /var/tmp/${client_service_name}-root
+  # Make sure common-files exist
+  [ -d ${SUSE_ROOT}/etc/ssh ] || mkdir -p ${SUSE_ROOT}/etc/ssh
+  [ -f ${deps}/common/sshd_config ] && sed -e "s/^Port.*/Port ${sshd_port}/g" -e "s/^AddressFamily.*/AddressFamily ${sshd_inet}/g" ${deps}/common/sshd_config > ${SUSE_ROOT}/etc/ssh/${client_service_name}.conf
+  # Make sure dist-specific files exist
+  [ -d "${SUSE_ROOT}/etc/init.d" ] || mkdir -p ${SUSE_ROOT}/etc/init.d
+  [ -f "${deps}/suse/startscript" ] && cp ${deps}/suse/startscript ${SUSE_ROOT}/etc/init.d/${client_service_name}
+  [ -d "${SUSE_ROOT}/usr/share/${client_service_name}" ] || mkdir -p ${SUSE_ROOT}/usr/share/${client_service_name}
+  [ -f "${deps}/suse/wrapper.sh" ] && cp ${deps}/suse/wrapper.sh ${SUSE_ROOT}/usr/share/${client_service_name}
+  [ -d "${SUSE_ROOT}/root/.ssh" ] || mkdir -p ${SUSE_ROOT}/root/.ssh
+  if [ -f "${MYDIR}/keys/${client_service_name}.pub" ]
+  then
+    for key in $keys; do
+      tmpkey=`cat ${MYDIR}/keys/${key}.pub`
+      echo "command=\"/usr/share/${client_service_name}/wrapper.sh\",no-port-forwarding,no-X11-forwarding,no-pty ${tmpkey}" >> ${SUSE_ROOT}/root/.ssh/${client_service_name}_keys
+    done
+  fi
+  # Create the actual RPM
+  mkdir -p ${SUSE_ROOT}/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  mkdir -p ${SUSE_ROOT}/${client_service_name}-${version}
+  cd ${SUSE_ROOT}
+  for i in $(ls | grep -v ${client_service_name}-${version}) ; do mv $i ${SUSE_ROOT}/${client_service_name}-${version}/ ; done
+  tar zcf ${SUSE_ROOT}/${client_service_name}-${version}/SOURCES/${client_service_name}-${version}.tar.gz .
+  print_line "\nBuilding RPM based on scripts:"
+  if [ ! -f $RPMBUILD ]; then
+    echo "No rpmbuild installed. exiting. ($RPMBUILD)"
+    echo "try yum install rpm-build"
+    exit 1
+  fi
+  rpmbuild -bb ${MYDIR}/specfiles/suse/${client_service_name}.specfile --define "_topdir ${SUSE_ROOT}/${client_service_name}-${version}" > /dev/null 2>&1
+  print_success $?
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  if [ -f ${SUSE_ROOT}/${client_service_name}-${version}/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ]
+  then
+    mv ${SUSE_ROOT}/${client_service_name}-${version}/RPMS/noarch/${client_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages
+    rm -rf ${SUSE_ROOT}
+    echo -e "Client RPM available in: ${MYDIR}/packages/${client_service_name}-${version}-1.noarch.rpm"
+  else
+    echo -e "Build failed, saving ${SUSE_ROOT}. Will remove when starting next build."
+    exit 1
+  fi 
+}
+
+function f_create_server_package_suse {
+  SUSE_ROOT=${SUSE_ROOT}/${server_service_name}
+  rm -rf ${SUSE_ROOT}
+  [ -d ${SUSE_ROOT} ] || mkdir -p ${SUSE_ROOT}
+  [ -d /var/tmp/${server_service_name}-root ] && rm -rf /var/tmp/${server_service_name}-root
+  # Create directories
+  [ -d "${SUSE_ROOT}/etc/sshupdate" ] || mkdir -p ${SUSE_ROOT}/etc/sshupdate
+  [ -d "${SUSE_ROOT}/usr/sbin" ] || mkdir -p ${SUSE_ROOT}/usr/sbin
+  # Install sshupdate
+  [ -f "${deps}/common/sshupdate" ] && cp ${deps}/common/sshupdate ${SUSE_ROOT}/usr/sbin/sshupdate
+  # Just a placeholder, empty config-file
+  [ -f "${SUSE_ROOT}/etc/sshupdate/config" ] || touch ${SUSE_ROOT}/etc/sshupdate/config
+  # Create the actual RPM
+  mkdir -p ${SUSE_ROOT}/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  mkdir -p ${SUSE_ROOT}/${server_service_name}-${version}
+  cd ${SUSE_ROOT}
+  for i in $(ls | grep -v ${server_service_name}-${version}) ; do mv $i ${SUSE_ROOT}/${server_service_name}-${version}/ ; done
+  tar zcf ${SUSE_ROOT}/${server_service_name}-${version}/SOURCES/${server_service_name}-${version}.tar.gz .
+  print_line "\nBuilding RPM based on scripts:"
+  if [ ! -f $RPMBUILD ]; then
+    echo "No rpmbuild installed. exiting. ($RPMBUILD)"
+    echo "try yum install rpm-build"
+    exit 1
+  fi
+  rpmbuild -bb ${MYDIR}/specfiles/suse/${server_service_name}.specfile --define "_topdir ${SUSE_ROOT}/${server_service_name}-${version}" > /dev/null 2>&1
+  print_success $?
+  [ -d ${MYDIR}/packages ] || mkdir -p ${MYDIR}/packages
+  if [ -f ${SUSE_ROOT}/${server_service_name}-${version}/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ]
+  then
+    mv ${SUSE_ROOT}/${server_service_name}-${version}/RPMS/noarch/${server_service_name}-${version}-1.noarch.rpm ${MYDIR}/packages
+    rm -rf ${SUSE_ROOT}
+    echo -e "Server RPM available in: ${MYDIR}/packages/${server_service_name}-${version}-1.noarch.rpm"
+  else
+    echo -e "Build failed, saving ${SUSE_ROOT}. Will remove when starting next build."
+    exit 1
+  fi 
+}
+
+## General functions 
+
 function f_help {
 PROG=$(basename $0)
   cat << EOF
 $PROG options:
   $PROG gen-keys - Generate ssh-keys
-  $PROG build-deb - Create deb's
-  $PROG build-client-deb - Create client deb
-  $PROG build-server-deb - Create server deb
-  $PROG build-rpm - Create rpm's
-  $PROG build-client-rpm - Create client rpm
-  $PROG build-server-rpm - Create server rpm
+  $PROG build-deb - Create packages for deb
+  $PROG build-client-deb - Create client package for deb
+  $PROG build-server-deb - Create server package for deb
+  $PROG build-rpm - Create packages for el6/fedora
+  $PROG build-client-rpm - Create client package for el6/fedora
+  $PROG build-server-rpm - Create server package for el6/fedora
+  $PROG build-suse - Create packages for suse
+  $PROG build-client-suse - Create client package for suse
+  $PROG build-server-rpm - Create server package for suse
   $PROG clean - Clean failed build
   $PROG init - Run gen-keys, then build-rpm
   $PROG sign-client-rpm - Sign the rpm with a gpg-key. see gpg.txt
@@ -446,6 +539,16 @@ case "$1" in
   build-server-rpm)
     f_create_server_package_el6
   ;;
+  build-suse)
+    f_create_client_package_suse
+    f_create_server_package_suse
+  ;;
+  build-client-suse)
+    f_create_client_package_suse
+  ;;
+  build-server-suse)
+    f_create_server_package_suse
+  ;;
   clean)
     rm -rf /var/tmp/${client_service_name}-root/
   ;;
@@ -480,6 +583,12 @@ case "$1" in
       [ $? = 0 ] && f_create_client_package_deb
       f_query_user "\nDo you want to create a server package?" yes_no
       [ $? = 0 ] && f_create_server_package_deb
+    elif [ -f /etc/SuSE-release ]
+    then
+      f_query_user "\nDo you want to create a client package?" yes_no
+      [ $? = 0 ] && f_create_client_package_suse
+      f_query_user "\nDo you want to create a server package?" yes_no
+      [ $? = 0 ] && f_create_server_package_suse
     else
       echo "Im not sure which distribution you want to build packages for, skipping."
     fi

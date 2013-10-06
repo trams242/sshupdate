@@ -1,0 +1,73 @@
+# No debuginfo:
+%define debug_package %{nil}
+
+%define name      sshupdated
+%define summary   scripts and configs for patching over ssh
+%define version   0.1
+%define release   1
+%define license   BSD License
+%define group     Networking/WWW
+%define source    %{name}-%{version}.tar.gz
+%define url       https://github.com/trams242/sshupdate
+%define vendor    sshupdate
+%define packager  sshupdate packaging team
+%define buildroot %{_tmppath}/%{name}-root
+%define _prefix   /
+
+Name:      %{name}
+Summary:   %{summary}
+Version:   %{version}
+Release:   %{release}
+License:   %{license}
+Group:     %{group}
+Source0:   %{source}
+BuildArch: noarch
+Requires:  openssh
+Requires(post): bash
+Requires(preun): bash
+Requires(pre): %insserv_prereq %fillup_prereq bash
+Requires(postun): bash
+Provides:  %{name}
+URL:       %{url}
+Buildroot: %{buildroot}
+
+%description
+This package contains startscripts and public keys for
+centralized patching over sshd.
+
+For further information, see the documentation at:
+https://github.com/trams242/sshupdate
+
+%prep
+
+%setup
+
+%build
+
+%install
+install -d %{buildroot}%{_prefix}/
+install -D -m 755 etc/init.d/sshupdated %{buildroot}%{_initrddir}/sshupdated
+
+tar cf - . | (cd %{buildroot}%{_prefix}/; tar xfp -)
+
+%pre
+
+%post
+%fillup_and_insserv sshupdated
+
+%preun
+%stop_on_removal sshupdated
+
+%postun
+%restart_on_update sshupdated
+%insserv_cleanup
+
+%clean
+rm -rf %{buildroot}
+
+%files
+%attr(0755, root, root) /etc/init.d/sshupdated
+%attr(0600, root, root) /etc/ssh/sshupdated.conf
+%attr(0600, root, root) /root/.ssh/sshupdated_keys
+%attr(0700, root, root) /usr/share/sshupdated
+%attr(0700, root, root) /usr/share/sshupdated/wrapper.sh
