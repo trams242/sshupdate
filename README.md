@@ -32,8 +32,8 @@ Supported platforms
 
 We are doing what we can to support as many platforms as possible.<br>
 
-Currently tested platforms: EL6, Debian(wheezy), Fedora(19), Ubuntu(13.04)<br>
-Planned platforms: OpenSUSE<br>
+Currently tested platforms: EL6, Debian(wheezy), Fedora(19), Ubuntu(13.04), OpenSUSE(12.3)<br>
+Planned: EL5
 Thinking about: AIX, FreeBSD, Solaris<br>
 
 As we are looking to support more platforms, you're welcome to help out. 
@@ -41,7 +41,7 @@ As we are looking to support more platforms, you're welcome to help out.
 How to get started
 ==================
 
-Getting started is fairly simple. Please note, that we currently support EL6 so the following assumes you're running on a EL6-host.
+Getting started is fairly simple. Please note, the following assumes you're running on a EL6-host.
 
 1. Download sources<br>
    Either download the zip: https://github.com/trams242/sshupdate/archive/master.zip <br>
