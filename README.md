@@ -32,8 +32,8 @@ Supported platforms
 
 We are doing what we can to support as many platforms as possible.<br>
 
-Currently tested platforms: EL6, Debian<br>
-Planned platforms: Ubuntu, Fedora, OpenSUSE<br>
+Currently tested platforms: EL6, Debian(wheezy), Fedora(19), Ubuntu(13.04)<br>
+Planned platforms: OpenSUSE<br>
 Thinking about: AIX, FreeBSD, Solaris<br>
 
 As we are looking to support more platforms, you're welcome to help out. 
