@@ -1,0 +1,151 @@
+#!/bin/bash
+#
+# sshupdated		sshupdate daemon for patching using OpenSSH	
+#
+# chkconfig: 2345 55 25
+# description: sshupdate daemon is used for patching the system. \
+#              This service uses the OpenSSH server daemon.
+#
+# processname: sshupdated
+# pidfile: /var/run/sshupdated.pid
+
+### BEGIN INIT INFO
+# Provides: sshupdated
+# Required-Start: $local_fs $network $syslog
+# Required-Stop: $local_fs $syslog
+# Should-Start: $syslog
+# Should-Stop: $network $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: sshupdate daemon for patching using OpenSSH
+# Description:      sshupdate daemon for patching using OpenSSH
+### END INIT INFO
+
+# pull in settings
+[ -f /usr/local/etc/sshupdate/sshupdated ] && . /usr/local/etc/sshupdate/sshupdated
+
+RETVAL=0
+prog="sshupdated"
+lockfile=/var/lock/subsys/sshupdated
+
+# Some functions to make the below more readable
+SSHD=/usr/sbin/sshd
+SSHD_CONFIG=/usr/local/etc/sshupdate/sshupdated.conf
+OPTIONS="-f $SSHD_CONFIG"
+PID_FILE=/var/run/sshupdated.pid
+
+runlevel=$(set -- $(runlevel); eval "echo \$$#" )
+
+success()
+{
+  [ $? = 0 ] && echo "[ ok ]"
+}
+
+failure()
+{
+  [ $? = 0 ] || echo "[ fail ]"
+}
+
+do_restart_sanity_check()
+{
+	$SSHD -f $SSHD_CONFIG -t
+	RETVAL=$?
+	if [ $RETVAL -ne  0 ]; then
+		echo "Configuration file or keys are invalid" ; exit 1
+	fi
+}
+
+start()
+{
+	[ -x $SSHD ] || exit 5
+	[ -f $SSHD_CONFIG ] || exit 6
+
+	echo -n $"Starting $prog: "
+	$SSHD $OPTIONS && success || failure
+        pgrep -f $SSHD_CONFIG > $PID_FILE
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && touch $lockfile
+	echo
+	return $RETVAL
+}
+
+stop()
+{
+	echo -n $"Stopping $prog: "
+        if [ -f "$PID_FILE" ]; then 
+          kill -9 $(cat $PID_FILE) && success || failure
+          [ $? = 0 ] && rm -f $PID_FILE
+        else
+          failure
+        fi
+	RETVAL=$?
+	# if we are in halt or reboot runlevel kill all running sessions
+	# so the TCP connections are closed cleanly
+	if [ "x$runlevel" = x0 -o "x$runlevel" = x6 ] ; then
+	    trap '' TERM
+	    killall $prog 2>/dev/null
+	    trap TERM
+	fi
+	[ $RETVAL -eq 0 ] && rm -f $lockfile
+	echo
+}
+
+reload()
+{
+	echo -n $"Reloading $prog: "
+        [ -f "$PID_FILE" ] && kill -HUP $(cat $PID_FILE)
+	RETVAL=$?
+	echo
+}
+
+restart() {
+	stop
+	start
+}
+
+force_reload() {
+	restart
+}
+
+case "$1" in
+	start)
+		pgrep -f $SSHD_CONFIG > /dev/null 2>&1
+                [ $? = 0 ] && exit 1
+		start
+		;;
+	stop)
+		pgrep -f $SSHD_CONFIG > /dev/null 2>&1
+                [ $? = 0 ] || exit 0
+		stop
+		;;
+	restart)
+		restart
+		;;
+	reload)
+		reload
+		;;
+	force-reload)
+		force_reload
+		;;
+	condrestart|try-restart)
+		if [ -f $lockfile ] ; then
+			do_restart_sanity_check
+			if [ $RETVAL -eq 0 ] ; then
+				stop
+				# avoid race
+				sleep 3
+				start
+			else
+				RETVAL=6
+			fi
+		fi
+		;;
+	status)
+                echo -n $"Status of $prog: "
+		pgrep -f $SSHD_CONFIG > /dev/null 2>&1 && success || failure
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
+		RETVAL=2
+esac
+exit $RETVAL
