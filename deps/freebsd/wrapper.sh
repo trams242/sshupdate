@@ -16,6 +16,10 @@ case "$SSH_ORIGINAL_COMMAND" in
 		;;
 	"patch-n-reboot")
 		$PKGTOOL upgrade -q -y
+		wall "Warning: System will reboot in 1 min"
+		wall "Remember to run patch-system after reboot"
+		sleep 60
+		init 6
 		;;
 	"system-upgrade")
 		$SYSTEMTOOL fetch install
@@ -26,7 +30,6 @@ case "$SSH_ORIGINAL_COMMAND" in
 		wall "Remember to run patch-system after reboot"
 		sleep 60
 		init 6
-		fi
                 ;;	
 	"reboot-if-needed")
 	        echo "Function not done yet" ; exit 1
