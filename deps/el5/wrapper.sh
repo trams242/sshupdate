@@ -8,6 +8,12 @@ case "$SSH_ORIGINAL_COMMAND" in
 	"patch")
 		/usr/bin/yum update -y --quiet
 		;;
+  "upgrade-major")
+    echo "This is supposed to do a major upgrade of your distribution release but we havnt tried it out on this platform yet."
+  ;;
+  "upgrade-major-n-reboot")
+    echo "This is supposed to do a major upgrade of your distribution release but we havnt tried it out on this platform yet."
+  ;;
 	"available-updates")
 		/usr/bin/yum list updates
 		;;

@@ -11,6 +11,12 @@ case "$SSH_ORIGINAL_COMMAND" in
 	"patch")
 		$PKGTOOL upgrade -q -y
 		;;
+  "upgrade-major")
+    echo "This is supposed to do a major upgrade of your distribution release but we havnt tried it out on this platform yet."
+  ;;
+  "upgrade-major-n-reboot")
+    echo "This is supposed to do a major upgrade of your distribution release but we havnt tried it out on this platform yet."
+  ;;
 	"available-updates")
 		$PKGTOOL upgrade -q -n
 		;;

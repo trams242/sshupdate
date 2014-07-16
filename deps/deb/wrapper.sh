@@ -9,6 +9,12 @@ case "$SSH_ORIGINAL_COMMAND" in
                 export DEBIAN_FRONTEND=noninteractive 
 		/usr/bin/apt-get update && /usr/bin/apt-get upgrade -y -q --force-yes
 		;;
+  "upgrade-major")
+    echo "This is supposed to do a major upgrade of your distribution release but we havnt tried it out on this platform yet."
+  ;;
+  "upgrade-major-n-reboot")
+    echo "This is supposed to do a major upgrade of your distribution release but we havnt tried it out on this platform yet."
+  ;;
 	"available-updates")
                 export DEBIAN_FRONTEND=noninteractive 
 		/usr/bin/apt-get update && echo n | /usr/bin/apt-get upgrade 

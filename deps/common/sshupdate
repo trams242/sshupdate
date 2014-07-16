@@ -83,6 +83,12 @@ case "$ACTION" in
   "patch")
     f_sshupdate ${ACTION} ${TARGET}
   ;;
+  "upgrade-major")
+    f_sshupdate ${ACTION} ${TARGET}
+  ;;
+  "upgrade-major-n-reboot")
+    f_sshupdate ${ACTION} ${TARGET}
+  ;;
   "available-updates")
     f_sshupdate ${ACTION} ${TARGET}
   ;;
